@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
+<title>PlantaFácil 3D</title>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:#1a1a2e;color:#fff;font-family:system-ui,sans-serif;overflow:hidden;height:100dvh;display:flex;flex-direction:column;}
+
+/* TOP BAR */
+#topbar{
+  display:flex;align-items:center;gap:8px;
+  padding:8px 10px;background:rgba(0,0,0,.7);
+  backdrop-filter:blur(8px);flex-shrink:0;z-index:10;
+  border-bottom:1px solid rgba(255,255,255,.1);
+  overflow-x:auto;overflow-y:hidden;
+  -webkit-overflow-scrolling:touch;
+  scrollbar-width:none;
+  touch-action:pan-x;
+}
+#topbar::-webkit-scrollbar{display:none;}
+#topbar h1{font-size:15px;font-weight:700;color:#a8d8b8;flex-shrink:0;}
+#topbar h1 span{color:#e67e22;}
+.tb-btn{
+  flex-shrink:0;
+  padding:7px 12px;border:1.5px solid rgba(255,255,255,.25);
+  background:rgba(255,255,255,.08);color:#fff;border-radius:8px;
+  font-size:12px;cursor:pointer;white-space:nowrap;
+  -webkit-tap-highlight-color:transparent;
+  transition:background .15s;
+}
+.tb-btn:hover,.tb-btn:active{background:rgba(255,255,255,.18);}
+.tb-btn.active{background:#2a5c3f;border-color:#2a5c3f;}
+#proj-name{font-size:11px;color:#a8d8b8;white-space:nowrap;flex-shrink:0;margin-left:4px;}
+
+/* CANVAS */
+#c{display:block;flex:1;width:100%;touch-action:none;}
+
+/* BOTTOM PANEL */
+#panel{
+  position:fixed;bottom:0;left:0;right:0;
+  background:rgba(10,10,20,.92);
+  backdrop-filter:blur(10px);
+  border-top:1px solid rgba(255,255,255,.12);
+  padding:8px 10px 12px;z-index:10;
+  display:flex;flex-direction:column;gap:6px;
+  touch-action:pan-y;
+}
+.panel-row{
+  display:flex;align-items:center;gap:8px;
+  overflow-x:auto;overflow-y:hidden;
+  -webkit-overflow-scrolling:touch;
+  scrollbar-width:none;
+  padding:2px 0;
+  touch-action:pan-x;
+  cursor:grab;
+}
+.panel-row::-webkit-scrollbar{display:none;}
+.panel-label{font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.6px;white-space:nowrap;min-width:48px;}
+.chip{
+  flex-shrink:0;padding:6px 11px;border:1.5px solid rgba(255,255,255,.2);
+  background:rgba(255,255,255,.06);color:#ddd;border-radius:20px;
+  font-size:11px;cursor:pointer;white-space:nowrap;
+  -webkit-tap-highlight-color:transparent;
+}
+.chip.on{background:#2a5c3f;border-color:#2a5c3f;color:#fff;}
+input[type=color]{width:32px;height:28px;border:none;border-radius:6px;cursor:pointer;background:none;padding:0;}
+input[type=range]{flex:1;min-width:80px;max-width:140px;accent-color:#2a5c3f;}
+
+/* LOADING */
+#loading{
+  position:fixed;inset:0;background:#1a1a2e;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:16px;z-index:100;
+}
+#loading h2{font-size:18px;color:#a8d8b8;}
+#loading p{font-size:13px;color:#666;}
+.spinner{width:40px;height:40px;border:3px solid rgba(255,255,255,.1);border-top-color:#2a5c3f;border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* SELECT PROJ */
+#sel-proj{
+  position:fixed;inset:0;background:rgba(0,0,0,.75);
+  display:flex;align-items:center;justify-content:center;z-index:500;
+  touch-action:none;
+}
+#sel-inner{
+  background:#1e2a3a;border-radius:14px;padding:20px;
+  width:300px;max-width:90vw;
+  max-height:80vh;display:flex;flex-direction:column;
+  box-shadow:0 8px 32px rgba(0,0,0,.5);
+}
+#sel-inner h2{font-size:15px;color:#a8d8b8;margin-bottom:12px;flex-shrink:0;}
+#sel-list{overflow-y:auto;flex:1;-webkit-overflow-scrolling:touch;margin-bottom:10px;}
+.sel-item{
+  padding:10px 14px;border:1.5px solid rgba(255,255,255,.15);
+  border-radius:8px;margin-bottom:6px;cursor:pointer;
+  font-size:13px;color:#ddd;
+}
+.sel-item:hover,.sel-item:active{background:rgba(255,255,255,.08);border-color:#2a5c3f;}
+
+/* CONTROLS HINT */
+#hint{position:fixed;top:56px;left:50%;transform:translateX(-50%);
+  background:rgba(0,0,0,.5);color:#aaa;font-size:11px;
+  padding:4px 12px;border-radius:20px;pointer-events:none;
+  opacity:1;transition:opacity 2s;white-space:nowrap;}
+#hint.fade{opacity:0;}
+
+/* WALK MODE badge */
+#mode-badge{
+  position:fixed;top:56px;right:12px;
+  background:#e67e22;color:#fff;font-size:11px;font-weight:700;
+  padding:4px 10px;border-radius:20px;display:none;
+}
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  <h1>Planta<span>Fácil</span> <span style="color:#fff;font-weight:300;">3D</span></h1>
+  <button class="tb-btn" onclick="window.open('index.html','_blank')" style="background:#2a5c3f;border-color:#2a5c3f;">✏️ 2D</button>
+  <button class="tb-btn" id="btn-orbit" onclick="setMode('orbit')">🔄 Orbitar</button>
+  <button class="tb-btn" id="btn-walk"  onclick="setMode('walk')">🚶 Entrar</button>
+  <button class="tb-btn" onclick="reloadProj()">🔃 Atualizar</button>
+  <button class="tb-btn" onclick="toggleRoof()">🏠 Teto</button>
+  <button class="tb-btn" onclick="resetCam()">📍 Reset</button>
+  <button class="tb-btn" onclick="openSelProj()">📁 Projeto</button>
+  <span id="proj-name">—</span>
+</div>
+
+<canvas id="c"></canvas>
+
+<div id="panel">
+  <div class="panel-row">
+    <span class="panel-label">Paredes</span>
+    <input type="color" id="wall-color" value="#f5f0e8" onchange="updateWallColor(this.value)" title="Cor das paredes"/>
+    <span class="chip on" onclick="setWallTex('plain')">Liso</span>
+    <span class="chip" onclick="setWallTex('brick')">Tijolo</span>
+    <span class="chip" onclick="setWallTex('concrete')">Concreto</span>
+  </div>
+  <div class="panel-row">
+    <span class="panel-label">Piso</span>
+    <input type="color" id="floor-color" value="#c8b89a" onchange="updateFloorColor(this.value)" title="Cor do piso"/>
+    <span class="chip on" onclick="setFloorTex('plain')">Liso</span>
+    <span class="chip" onclick="setFloorTex('wood')">Madeira</span>
+    <span class="chip" onclick="setFloorTex('tile')">Cerâmica</span>
+    <span class="chip" onclick="setFloorTex('cement')">Cimento</span>
+  </div>
+  <div class="panel-row">
+    <span class="panel-label">Teto</span>
+    <input type="color" id="roof-color" value="#e8e4de" onchange="updateRoofColor(this.value)" title="Cor do teto"/>
+    <span class="chip on" onclick="setRoofType('flat')">Plana</span>
+    <span class="chip" onclick="setRoofType('gable')">Duas águas</span>
+    <span class="chip" onclick="setRoofType('solar')">☀️ Solar</span>
+  </div>
+  <div class="panel-row">
+    <span class="panel-label">Altura</span>
+    <input type="range" id="wall-height" min="2" max="4" step="0.1" value="2.8" oninput="updateWallHeight(this.value)"/>
+    <span id="height-val" style="font-size:11px;color:#aaa;min-width:32px;">2.8m</span>
+    <span class="panel-label" style="margin-left:8px;">Luz</span>
+    <input type="range" id="light-int" min="0.2" max="2" step="0.1" value="1" oninput="updateLight(this.value)"/>
+  </div>
+</div>
+
+<div id="loading">
+  <div class="spinner"></div>
+  <h2>PlantaFácil 3D</h2>
+  <p id="load-msg">Conectando ao Firebase...</p>
+</div>
+
+<div id="sel-proj" style="display:none;">
+  <div id="sel-inner">
+    <h2>📁 Escolher projeto</h2>
+    <div id="sel-list">Carregando...</div>
+    <button class="tb-btn" style="margin-top:12px;width:100%;" onclick="closeSelProj()">✕ Fechar</button>
+  </div>
+</div>
+
+<div id="hint">🖱 Arraste para orbitar • Pinch = zoom • 2x toque = entrar na casa</div>
+<div id="mode-badge" id="mode-badge">🚶 MODO CAMINHADA — WASD/setas para mover</div>
+
+<script>
+// ============================================================
+// FIREBASE
+// ============================================================
+var FB_CONFIG = {
+  apiKey: "AIzaSyBQt019DWWb-a83b_o-vsonuXJ9m6z1MGw",
+  authDomain: "plantafacil-ernandes.firebaseapp.com",
+  projectId: "plantafacil-ernandes",
+  storageBucket: "plantafacil-ernandes.firebasestorage.app",
+  messagingSenderId: "387009506672",
+  appId: "1:387009506672:web:88c6569305d709b502f3b5"
+};
+var FB_COL = 'plantafacil_projetos';
+var fbDb = null;
+var currentProj = localStorage.getItem('pf_current_proj') || 'ernandes_main';
+
+function initFB(){
+  if(fbDb) return;
+  if(!firebase.apps.length) firebase.initializeApp(FB_CONFIG);
+  fbDb = firebase.firestore();
+}
+
+// ============================================================
+// THREE.JS SETUP
+// ============================================================
+var scene, camera, renderer, ambLight, dirLight;
+var objects3d = { walls:[], floors:[], roofs:[], doors:[], windows:[], extras:[] };
+var wallHeight = 2.8;
+var showRoof = true;
+var roofType = 'flat';
+var wallColor = '#f5f0e8';
+var floorColor = '#c8b89a';
+var roofColor = '#e8e4de';
+var wallTex = 'plain', floorTex = 'plain';
+var currentEls = [];
+
+// Modo câmera
+var camMode = 'orbit'; // 'orbit' | 'walk'
+var orbitState = { theta:0.6, phi:1.1, radius:20, target:new THREE.Vector3(0,0,0) };
+var walkState  = { pos:new THREE.Vector3(0,1.6,0), yaw:0, pitch:0 };
+var keys = {};
+
+function initThree(){
+  var canvas = document.getElementById('c');
+  renderer = new THREE.WebGLRenderer({canvas:canvas, antialias:true});
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.setClearColor(0x87ceeb);
+
+  scene = new THREE.Scene();
+  scene.fog = new THREE.Fog(0x87ceeb, 30, 80);
+
+  camera = new THREE.PerspectiveCamera(60, 1, 0.05, 200);
+  applyCamOrbit();
+
+  // Luzes
+  ambLight = new THREE.AmbientLight(0xffffff, 0.6);
+  scene.add(ambLight);
+  dirLight = new THREE.DirectionalLight(0xfffbe0, 1.0);
+  dirLight.position.set(10,20,10);
+  dirLight.castShadow = true;
+  dirLight.shadow.mapSize.set(1024,1024);
+  dirLight.shadow.camera.near = 0.5;
+  dirLight.shadow.camera.far = 100;
+  dirLight.shadow.camera.left = -30;
+  dirLight.shadow.camera.right = 30;
+  dirLight.shadow.camera.top = 30;
+  dirLight.shadow.camera.bottom = -30;
+  scene.add(dirLight);
+
+  // Chão externo
+  var groundGeo = new THREE.PlaneGeometry(200,200);
+  var groundMat = new THREE.MeshLambertMaterial({color:0x5a8a3a});
+  var ground = new THREE.Mesh(groundGeo, groundMat);
+  ground.rotation.x = -Math.PI/2;
+  ground.receiveShadow = true;
+  scene.add(ground);
+
+  // Céu gradient simples
+  var skyGeo = new THREE.SphereGeometry(90,16,8);
+  var skyMat = new THREE.MeshBasicMaterial({
+    color:0x87ceeb, side:THREE.BackSide
+  });
+  scene.add(new THREE.Mesh(skyGeo, skyMat));
+
+  resizeRenderer();
+  window.addEventListener('resize', resizeRenderer);
+  setupControls();
+  animate();
+}
+
+function resizeRenderer(){
+  var w = window.innerWidth;
+  var h = window.innerHeight - document.getElementById('topbar').offsetHeight
+        - document.getElementById('panel').offsetHeight;
+  renderer.setSize(w, Math.max(h,100));
+  camera.aspect = w / Math.max(h,100);
+  camera.updateProjectionMatrix();
+}
+
+// ============================================================
+// BUILD 3D FROM ELEMENTS
+// ============================================================
+function clearScene(){
+  var all = objects3d.walls.concat(objects3d.floors,objects3d.roofs,objects3d.doors,objects3d.windows,objects3d.extras);
+  all.forEach(function(o){ scene.remove(o); o.geometry&&o.geometry.dispose(); });
+  objects3d = {walls:[],floors:[],roofs:[],doors:[],windows:[],extras:[]};
+}
+
+function buildScene(els){
+  clearScene();
+  currentEls = els;
+  var SC = 1; // metros já são metros
+
+  // Calcular centro
+  var cx=0,cy=0,count=0;
+  els.forEach(function(el){
+    if(el.type==='room'||el.type==='wall'){
+      cx+=el.xm+el.wm/2; cy+=el.ym+el.hm/2; count++;
+    }
+  });
+  if(count>0){cx/=count;cy/=count;}
+
+  els.forEach(function(el){
+    var x = el.xm - cx;
+    var z = el.ym - cy;
+    var w = el.wm, d = el.hm;
+    var color = el.color||wallColor;
+
+    if(el.type==='room'){
+      makeRoom(x, z, w, d, color);
+    } else if(el.type==='wall'){
+      makeWallBox(x, z, w, d, color);
+    } else if(el.type==='pergola'){
+      makePergola(x, z, w, d);
+    } else if(el.type==='textbox'){
+      makeLabel(x+w/2, z+d/2, el.text||el.label||'');
+    } else if(el.type==='tv'){
+      makeTVMarker(x+w/2, z+d/2);
+    }
+    // Árvores
+    var treeTypes=['tree_green','tree_palm','tree_purple','tree_yellow','tree_banana','tree_guava','tree_inga'];
+    for(var ti=0;ti<treeTypes.length;ti++){
+      if(el.type===treeTypes[ti]){
+        makeTree(x+w/2, z+d/2, el.type);
+        break;
+      }
+    }
+  });
+
+  // Centralizar câmera
+  var bbox = getSceneBBox();
+  var size = Math.max(bbox.sizeX, bbox.sizeZ, 8);
+  orbitState.target.set(0, wallHeight/2, 0);
+  orbitState.radius = size * 1.1;
+  orbitState.theta = 0.8;
+  orbitState.phi = 1.1;
+  walkState.pos.set(0, 1.6, bbox.maxZ+2);
+  if(camMode==='orbit') applyCamOrbit();
+}
+
+function getSceneBBox(){
+  var minX=Infinity,maxX=-Infinity,minZ=Infinity,maxZ=-Infinity;
+  objects3d.floors.concat(objects3d.walls).forEach(function(o){
+    var b=new THREE.Box3().setFromObject(o);
+    minX=Math.min(minX,b.min.x);maxX=Math.max(maxX,b.max.x);
+    minZ=Math.min(minZ,b.min.z);maxZ=Math.max(maxZ,b.max.z);
+  });
+  if(minX===Infinity){minX=-5;maxX=5;minZ=-5;maxZ=5;}
+  return{minX,maxX,minZ,maxZ,sizeX:maxX-minX,sizeZ:maxZ-minZ};
+}
+
+// Materiais
+function wallMat(color){
+  return new THREE.MeshLambertMaterial({color: colorStr(color)||colorStr(wallColor)});
+}
+function floorMat(color){
+  return new THREE.MeshLambertMaterial({color: colorStr(color)||colorStr(floorColor)});
+}
+function colorStr(c){
+  if(!c||c==='transparent'||c==='')return null;
+  try{return new THREE.Color(c);}catch(e){return null;}
+}
+
+function makeRoom(x, z, w, d, color){
+  var wc = colorStr(color&&color!=='transparent'?color:wallColor)||new THREE.Color(wallColor);
+  var mat = new THREE.MeshLambertMaterial({color:wc});
+  var fmat = new THREE.MeshLambertMaterial({color:new THREE.Color(floorColor)});
+  var H = wallHeight, T = 0.15; // espessura parede
+
+  // Piso
+  var floor = new THREE.Mesh(
+    new THREE.BoxGeometry(w-T*2, 0.05, d-T*2),
+    fmat
+  );
+  floor.position.set(x+w/2, 0.025, z+d/2);
+  floor.receiveShadow = true;
+  scene.add(floor);
+  objects3d.floors.push(floor);
+
+  // 4 paredes
+  // Norte
+  var wn=makeSolidWall(x,z,w,T,H,mat); objects3d.walls.push(wn);
+  // Sul
+  var ws=makeSolidWall(x,z+d-T,w,T,H,mat); objects3d.walls.push(ws);
+  // Oeste
+  var wo=makeSolidWall(x,z,T,d,H,mat); objects3d.walls.push(wo);
+  // Leste
+  var we=makeSolidWall(x+w-T,z,T,d,H,mat); objects3d.walls.push(we);
+
+  // Teto (se visível)
+  if(showRoof){
+    buildRoofForRoom(x,z,w,d,H);
+  }
+}
+
+function makeSolidWall(x,z,w,d,h,mat){
+  var geo = new THREE.BoxGeometry(w,h,d);
+  var mesh = new THREE.Mesh(geo,mat);
+  mesh.position.set(x+w/2, h/2, z+d/2);
+  mesh.castShadow=true; mesh.receiveShadow=true;
+  scene.add(mesh);
+  return mesh;
+}
+
+function makeWallBox(x,z,w,d,color){
+  var c = colorStr(color&&color!=='transparent'?color:wallColor)||new THREE.Color(wallColor);
+  var mat = new THREE.MeshLambertMaterial({color:c});
+  var H = wallHeight;
+  var mesh = new THREE.Mesh(new THREE.BoxGeometry(w,H,d), mat);
+  mesh.position.set(x+w/2, H/2, z+d/2);
+  mesh.castShadow=true; mesh.receiveShadow=true;
+  scene.add(mesh);
+  objects3d.walls.push(mesh);
+}
+
+function buildRoofForRoom(x,z,w,d,H){
+  var rmat = new THREE.MeshLambertMaterial({color:new THREE.Color(roofColor), side:THREE.DoubleSide});
+  if(roofType==='flat'||roofType==='solar'){
+    var roof = new THREE.Mesh(new THREE.BoxGeometry(w+0.1,0.12,d+0.1), rmat);
+    roof.position.set(x+w/2, H+0.06, z+d/2);
+    roof.receiveShadow=true;
+    scene.add(roof);
+    objects3d.roofs.push(roof);
+    if(roofType==='solar'){
+      makeSolarPanels(x,z,w,d,H);
+    }
+  } else if(roofType==='gable'){
+    // Duas águas simples
+    var s1 = new THREE.Mesh(new THREE.BoxGeometry(w+0.2, 0.1, d/2+0.2), rmat);
+    s1.rotation.z = -0.35;
+    s1.position.set(x+w/2, H+0.5, z+d*0.25);
+    scene.add(s1); objects3d.roofs.push(s1);
+    var s2 = new THREE.Mesh(new THREE.BoxGeometry(w+0.2, 0.1, d/2+0.2), rmat);
+    s2.rotation.z = 0.35;
+    s2.position.set(x+w/2, H+0.5, z+d*0.75);
+    scene.add(s2); objects3d.roofs.push(s2);
+  }
+}
+
+function makeSolarPanels(x,z,w,d,H){
+  var panelMat = new THREE.MeshLambertMaterial({color:0x1a3a6a});
+  var nx = Math.max(1,Math.floor(w/1.0));
+  var nz = Math.max(1,Math.floor(d/1.7));
+  for(var pi=0;pi<nx;pi++){
+    for(var pj=0;pj<nz;pj++){
+      var p = new THREE.Mesh(new THREE.BoxGeometry(0.85,0.05,1.55), panelMat);
+      p.position.set(
+        x+0.5+(pi*(w/nx)),
+        H+0.18,
+        z+0.85+(pj*(d/nz))
+      );
+      scene.add(p); objects3d.roofs.push(p);
+    }
+  }
+}
+
+function makePergola(x,z,w,d){
+  var woodMat = new THREE.MeshLambertMaterial({color:0x8b5e3c});
+  var H = wallHeight;
+  // Postes nos cantos
+  [[0,0],[w,0],[0,d],[w,d]].forEach(function(pt){
+    var post = new THREE.Mesh(new THREE.BoxGeometry(0.1,H,0.1), woodMat);
+    post.position.set(x+pt[0], H/2, z+pt[1]);
+    scene.add(post); objects3d.extras.push(post);
+  });
+  // Vigas longitudinais
+  var nv=Math.max(2,Math.round(w/1.0));
+  for(var vi=0;vi<=nv;vi++){
+    var viga=new THREE.Mesh(new THREE.BoxGeometry(0.08,0.08,d), woodMat);
+    viga.position.set(x+(w*vi/nv), H, z+d/2);
+    scene.add(viga); objects3d.extras.push(viga);
+  }
+  // Vigas transversais
+  var nt=Math.max(2,Math.round(d/1.0));
+  for(var ti=0;ti<=nt;ti++){
+    var tiga=new THREE.Mesh(new THREE.BoxGeometry(w,0.06,0.06), woodMat);
+    tiga.position.set(x+w/2, H-0.05, z+(d*ti/nt));
+    scene.add(tiga); objects3d.extras.push(tiga);
+  }
+}
+
+function makeTree(x,z,type){
+  var trunkMat = new THREE.MeshLambertMaterial({color:0x5a3010});
+  var trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.15,1.2,8), trunkMat);
+  trunk.position.set(x,0.6,z);
+  scene.add(trunk); objects3d.extras.push(trunk);
+  var colors={'tree_green':0x2a7a40,'tree_palm':0x1a6030,'tree_purple':0x8a3a9a,
+              'tree_yellow':0xc8a000,'tree_banana':0x3a9a20,'tree_guava':0x4a8a20,'tree_inga':0x2a6a30};
+  var leafCol = colors[type]||0x2a7a40;
+  var leafMat = new THREE.MeshLambertMaterial({color:leafCol});
+  var r = type==='tree_banana'?1.2:type==='tree_palm'?0.9:1.0;
+  var leaf = new THREE.Mesh(new THREE.SphereGeometry(r,8,6), leafMat);
+  leaf.scale.y = 0.7;
+  leaf.position.set(x,1.5+r*0.6,z);
+  scene.add(leaf); objects3d.extras.push(leaf);
+}
+
+function makeLabel(x,z,text){
+  // Placeholder visual — texto 3D real requer FontLoader
+  // Usar um sprite simples
+  var canvas2=document.createElement('canvas');
+  canvas2.width=256;canvas2.height=64;
+  var c2=canvas2.getContext('2d');
+  c2.fillStyle='rgba(255,255,255,0.9)';
+  c2.fillRect(0,0,256,64);
+  c2.fillStyle='#1a1a1a';
+  c2.font='bold 24px system-ui';
+  c2.textAlign='center';
+  c2.fillText(text,128,40);
+  var tex=new THREE.CanvasTexture(canvas2);
+  var mat=new THREE.SpriteMaterial({map:tex,transparent:true});
+  var sprite=new THREE.Sprite(mat);
+  sprite.position.set(x,wallHeight+0.5,z);
+  sprite.scale.set(2,0.5,1);
+  scene.add(sprite);
+  objects3d.extras.push(sprite);
+}
+
+function makeTVMarker(x,z){
+  var mat=new THREE.MeshLambertMaterial({color:0x1a1a2e});
+  var tv=new THREE.Mesh(new THREE.BoxGeometry(1.4,0.8,0.08), mat);
+  tv.position.set(x, 1.2, z);
+  scene.add(tv); objects3d.extras.push(tv);
+  var screenMat=new THREE.MeshBasicMaterial({color:0x2a3a5a});
+  var screen=new THREE.Mesh(new THREE.BoxGeometry(1.3,0.7,0.01), screenMat);
+  screen.position.set(x,1.2,z+0.05);
+  scene.add(screen); objects3d.extras.push(screen);
+}
+
+// ============================================================
+// CAMERA CONTROLS
+// ============================================================
+function applyCamOrbit(){
+  var s=orbitState;
+  camera.position.set(
+    s.target.x + s.radius*Math.sin(s.theta)*Math.sin(s.phi),
+    s.target.y + s.radius*Math.cos(s.phi),
+    s.target.z + s.radius*Math.cos(s.theta)*Math.sin(s.phi)
+  );
+  camera.lookAt(s.target);
+}
+
+function applyCamWalk(){
+  var s=walkState;
+  camera.position.copy(s.pos);
+  var dir=new THREE.Vector3(
+    Math.sin(s.yaw)*Math.cos(s.pitch),
+    Math.sin(s.pitch),
+    Math.cos(s.yaw)*Math.cos(s.pitch)
+  );
+  camera.lookAt(s.pos.clone().add(dir));
+}
+
+function setMode(m){
+  camMode=m;
+  document.getElementById('btn-orbit').classList.toggle('active',m==='orbit');
+  document.getElementById('btn-walk').classList.toggle('active',m==='walk');
+  document.getElementById('mode-badge').style.display=m==='walk'?'block':'none';
+  if(m==='walk'){
+    walkState.pos.set(0,1.6,getSceneBBox().maxZ+2);
+    walkState.yaw=Math.PI;
+    walkState.pitch=0;
+    showToast('🚶 Use WASD ou setas para mover, arraste para olhar','#e67e22');
+  }
+}
+
+function resetCam(){
+  setMode('orbit');
+  var bbox=getSceneBBox();
+  var size=Math.max(bbox.sizeX,bbox.sizeZ,8);
+  orbitState.radius=size*1.1;
+  orbitState.theta=0.8;
+  orbitState.phi=1.1;
+  orbitState.target.set(0,wallHeight/2,0);
+  applyCamOrbit();
+}
+
+// ============================================================
+// POINTER CONTROLS (orbit + walk)
+// ============================================================
+var ptr={down:false,x:0,y:0,pinch:false,pd:0};
+
+function setupControls(){
+  var el=document.getElementById('c');
+  el.addEventListener('mousedown',function(e){ptr.down=true;ptr.x=e.clientX;ptr.y=e.clientY;});
+  el.addEventListener('mousemove',function(e){
+    if(!ptr.down)return;
+    var dx=e.clientX-ptr.x, dy=e.clientY-ptr.y;
+    ptr.x=e.clientX;ptr.y=e.clientY;
+    handleDrag(dx,dy);
+  });
+  el.addEventListener('mouseup',function(){ptr.down=false;});
+  el.addEventListener('wheel',function(e){
+    e.preventDefault();
+    if(camMode==='orbit'){orbitState.radius=Math.max(2,Math.min(80,orbitState.radius+e.deltaY*0.02));}
+  },{passive:false});
+
+  el.addEventListener('touchstart',function(e){
+    // Ignorar se o toque veio de dentro do painel
+    var panelEl=document.getElementById('panel');
+    var topbarEl=document.getElementById('topbar');
+    var panelRect=panelEl.getBoundingClientRect();
+    var topbarRect=topbarEl.getBoundingClientRect();
+    var ty=e.touches[0].clientY;
+    if(ty>=panelRect.top||ty<=topbarRect.bottom) return;
+    if(e.touches.length===2){
+      ptr.pinch=true;
+      var dx=e.touches[0].clientX-e.touches[1].clientX;
+      var dy=e.touches[0].clientY-e.touches[1].clientY;
+      ptr.pd=Math.sqrt(dx*dx+dy*dy);
+    } else {
+      ptr.down=true;ptr.x=e.touches[0].clientX;ptr.y=e.touches[0].clientY;
+    }
+  },{passive:true});
+  el.addEventListener('touchmove',function(e){
+    e.preventDefault();
+    if(e.touches.length===2&&ptr.pinch){
+      var dx=e.touches[0].clientX-e.touches[1].clientX;
+      var dy=e.touches[0].clientY-e.touches[1].clientY;
+      var d=Math.sqrt(dx*dx+dy*dy);
+      if(camMode==='orbit') orbitState.radius=Math.max(2,Math.min(80,orbitState.radius*(ptr.pd/d)));
+      ptr.pd=d;
+    } else if(e.touches.length===1&&ptr.down){
+      var dx2=e.touches[0].clientX-ptr.x, dy2=e.touches[0].clientY-ptr.y;
+      ptr.x=e.touches[0].clientX;ptr.y=e.touches[0].clientY;
+      handleDrag(dx2,dy2);
+    }
+  },{passive:false});
+  el.addEventListener('touchend',function(){ptr.down=false;ptr.pinch=false;});
+
+  // Duplo toque = entrar no modo walk
+  var lastTap2=0;
+  el.addEventListener('touchstart',function(e){
+    var now=Date.now();
+    if(now-lastTap2<350&&e.touches.length===1) setMode(camMode==='orbit'?'walk':'orbit');
+    lastTap2=now;
+  },{passive:true});
+
+  // Teclado
+  document.addEventListener('keydown',function(e){keys[e.key]=true;});
+  document.addEventListener('keyup',function(e){keys[e.key]=false;});
+}
+
+function handleDrag(dx,dy){
+  if(camMode==='orbit'){
+    orbitState.theta -= dx*0.008;
+    orbitState.phi = Math.max(0.15,Math.min(Math.PI*0.48,orbitState.phi-dy*0.008));
+    applyCamOrbit();
+  } else {
+    walkState.yaw   -= dx*0.004;
+    walkState.pitch = Math.max(-0.8,Math.min(0.8,walkState.pitch-dy*0.004));
+  }
+}
+
+// ============================================================
+// ANIMATE
+// ============================================================
+function animate(){
+  requestAnimationFrame(animate);
+  if(camMode==='walk'){
+    var speed=0.06;
+    var yaw=walkState.yaw;
+    var fwd=new THREE.Vector3(Math.sin(yaw),0,Math.cos(yaw));
+    var right=new THREE.Vector3(Math.cos(yaw),0,-Math.sin(yaw));
+    if(keys['w']||keys['ArrowUp'])   walkState.pos.addScaledVector(fwd,-speed);
+    if(keys['s']||keys['ArrowDown']) walkState.pos.addScaledVector(fwd, speed);
+    if(keys['a']||keys['ArrowLeft']) walkState.pos.addScaledVector(right,-speed);
+    if(keys['d']||keys['ArrowRight'])walkState.pos.addScaledVector(right, speed);
+    walkState.pos.y=1.6;
+    applyCamWalk();
+  } else {
+    applyCamOrbit();
+  }
+  renderer.render(scene,camera);
+}
+
+// ============================================================
+// MATERIAL UPDATES
+// ============================================================
+function updateWallColor(v){
+  wallColor=v;
+  objects3d.walls.forEach(function(o){
+    if(o.material) o.material.color.set(v);
+  });
+}
+function updateFloorColor(v){
+  floorColor=v;
+  objects3d.floors.forEach(function(o){
+    if(o.material) o.material.color.set(v);
+  });
+}
+function updateRoofColor(v){
+  roofColor=v;
+  objects3d.roofs.forEach(function(o){
+    if(o.material) o.material.color&&o.material.color.set(v);
+  });
+}
+function updateWallHeight(v){
+  wallHeight=parseFloat(v);
+  document.getElementById('height-val').textContent=v+'m';
+  if(currentEls.length>0) buildScene(currentEls);
+}
+function updateLight(v){
+  ambLight.intensity=parseFloat(v)*0.6;
+  dirLight.intensity=parseFloat(v);
+}
+function toggleRoof(){
+  showRoof=!showRoof;
+  if(currentEls.length>0) buildScene(currentEls);
+}
+function setWallTex(t){
+  wallTex=t;
+  document.querySelectorAll('.panel-row:nth-child(1) .chip').forEach(function(c,i){
+    c.classList.toggle('on',['plain','brick','concrete'][i]===t);
+  });
+  // Cor automática por textura
+  if(t==='brick'){updateWallColor('#c8724a');document.getElementById('wall-color').value='#c8724a';}
+  else if(t==='concrete'){updateWallColor('#b0a898');document.getElementById('wall-color').value='#b0a898';}
+  else{updateWallColor('#f5f0e8');document.getElementById('wall-color').value='#f5f0e8';}
+}
+function setFloorTex(t){
+  floorTex=t;
+  document.querySelectorAll('.panel-row:nth-child(2) .chip').forEach(function(c,i){
+    c.classList.toggle('on',['plain','wood','tile','cement'][i]===t);
+  });
+  if(t==='wood'){updateFloorColor('#c8a070');document.getElementById('floor-color').value='#c8a070';}
+  else if(t==='tile'){updateFloorColor('#d8d0c0');document.getElementById('floor-color').value='#d8d0c0';}
+  else if(t==='cement'){updateFloorColor('#a0a0a0');document.getElementById('floor-color').value='#a0a0a0';}
+  else{updateFloorColor('#c8b89a');document.getElementById('floor-color').value='#c8b89a';}
+}
+function setRoofType(t){
+  roofType=t;
+  document.querySelectorAll('.panel-row:nth-child(3) .chip').forEach(function(c,i){
+    c.classList.toggle('on',['flat','gable','solar'][i]===t);
+  });
+  if(currentEls.length>0) buildScene(currentEls);
+}
+
+// ============================================================
+// FIREBASE LOAD
+// ============================================================
+function loadProj(name){
+  initFB();
+  currentProj=name||currentProj;
+  document.getElementById('proj-name').textContent='📁 '+currentProj;
+  setLoadMsg('Carregando "'+currentProj+'"...');
+  fbDb.collection(FB_COL).doc(currentProj).get()
+    .then(function(doc){
+      if(!doc.exists){
+        setLoadMsg('Projeto "'+currentProj+'" não encontrado.');
+        document.getElementById('loading').style.display='none';
+        showToast('Projeto não encontrado. Abra o PlantaFácil 2D primeiro.','#c0392b');
+        buildScene([]);return;
+      }
+      var data=doc.data();
+      var els=data.els||[];
+      document.getElementById('loading').style.display='none';
+      buildScene(els);
+      showToast('✅ "'+currentProj+'" carregado — '+els.length+' elementos','#2a5c3f');
+    })
+    .catch(function(e){
+      setLoadMsg('Erro: '+e.message);
+      setTimeout(function(){document.getElementById('loading').style.display='none';},2000);
+    });
+}
+
+function reloadProj(){
+  showToast('🔃 Recarregando "'+currentProj+'"...','#1a3a6a');
+  loadProj(currentProj);
+}
+function setLoadMsg(m){document.getElementById('load-msg').textContent=m;}
+
+// Select project modal
+function openSelProj(){
+  initFB();
+  document.getElementById('sel-proj').style.display='flex';
+  var list=document.getElementById('sel-list');
+  list.innerHTML='<div style="color:#888;padding:8px;font-size:13px;">Buscando...</div>';
+  fbDb.collection(FB_COL).get().then(function(snap){
+    if(snap.empty){list.innerHTML='<div style="color:#666;padding:8px;">Nenhum projeto encontrado.</div>';return;}
+    var docs=[];snap.forEach(function(d){docs.push({id:d.id,data:d.data()});});
+    docs.sort(function(a,b){return(b.data.ts||0)-(a.data.ts||0);});
+    list.innerHTML='';
+    docs.forEach(function(item){
+      var div=document.createElement('div');div.className='sel-item';
+      var dt=item.data.ts?new Date(item.data.ts).toLocaleString('pt-BR'):'—';
+      var n=item.data.els?item.data.els.length:0;
+      div.innerHTML='<b>'+item.id+'</b><br><small style="color:#666;">'+dt+' · '+n+' elementos</small>';
+      div.onclick=function(){closeSelProj();loadProj(item.id);localStorage.setItem('pf_current_proj',item.id);};
+      list.appendChild(div);
+    });
+  }).catch(function(e){list.innerHTML='<div style="color:#c0392b;">Erro: '+e.message+'</div>';});
+}
+function closeSelProj(){document.getElementById('sel-proj').style.display='none';}
+window.closeSelProj=closeSelProj;
+
+function showToast(msg,color){
+  var t=document.createElement('div');
+  t.textContent=msg;
+  t.style.cssText='position:fixed;bottom:220px;left:50%;transform:translateX(-50%);background:'+color+';color:#fff;padding:10px 20px;border-radius:10px;font-size:13px;font-weight:700;z-index:9999;box-shadow:0 3px 12px rgba(0,0,0,.4);pointer-events:none;white-space:nowrap;';
+  document.body.appendChild(t);
+  setTimeout(function(){t.remove();},3000);
+}
+
+// Fade hint
+setTimeout(function(){
+  var h=document.getElementById('hint');
+  if(h)h.classList.add('fade');
+},4000);
+
+// ============================================================
+// INIT
+// ============================================================
+initThree();
+
+// Impedir que toques no painel e topbar cheguem ao canvas
+['panel','topbar','sel-proj','modal-proj'].forEach(function(id){
+  var el2=document.getElementById(id);
+  if(!el2)return;
+  el2.addEventListener('touchstart',function(e){e.stopPropagation();},{passive:true});
+  el2.addEventListener('touchmove', function(e){e.stopPropagation();},{passive:true});
+  el2.addEventListener('touchend',  function(e){e.stopPropagation();},{passive:true});
+});
+
+setLoadMsg('Carregando Three.js...');
+setTimeout(function(){loadProj(currentProj);},300);
+</script>
+</body>
+</html>
