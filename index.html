@@ -395,42 +395,56 @@ var TREE_IMGS = {
 
   function refreshProjList(){
     var list=document.getElementById('proj-list');
-    list.innerHTML='<div style="color:#888;font-size:12px;">Buscando projetos...</div>';
-    fbDb.collection(FB_COLLECTION).orderBy('ts','desc').get()
+    list.innerHTML='<div style="color:#888;font-size:12px;padding:8px;">Buscando projetos...</div>';
+    fbDb.collection(FB_COLLECTION).get()
       .then(function(snap){
         if(snap.empty){
-          list.innerHTML='<div style="color:#aaa;font-size:12px;">Nenhum projeto salvo ainda.</div>';
+          list.innerHTML='<div style="color:#aaa;font-size:12px;padding:8px;">Nenhum projeto salvo ainda.</div>';
           return;
         }
+        // Ordenar por ts localmente
+        var docs=[];
+        snap.forEach(function(doc){ docs.push({id:doc.id, data:doc.data()}); });
+        docs.sort(function(a,b){ return (b.data.ts||0)-(a.data.ts||0); });
         list.innerHTML='';
-        snap.forEach(function(doc){
-          var d=doc.data();
-          var ts=d.ts?new Date(d.ts).toLocaleDateString('pt-BR','dd/MM HH:mm'):'—';
+        docs.forEach(function(item){
           var div=document.createElement('div');
-          div.className='proj-item'+(doc.id===currentProject?' active-proj':'');
-          div.innerHTML='<span>'+doc.id+'</span><small style="color:#888;font-size:10px;">'+new Date(d.ts||0).toLocaleString('pt-BR')+'</small>';
+          div.className='proj-item'+(item.id===currentProject?' active-proj':'');
+          var dt = item.data.ts ? new Date(item.data.ts).toLocaleString('pt-BR') : '—';
+          var nelems = item.data.els ? item.data.els.length : 0;
+          div.innerHTML='<div><b>'+item.id+'</b><br><small style="color:#888;">'+dt+' · '+nelems+' elementos</small></div><span style="font-size:18px;">'+(item.id===currentProject?'✓':'')+'</span>';
           div.addEventListener('click',function(){
-            currentProject=doc.id;
+            currentProject=item.id;
             localStorage.setItem('pf_current_proj',currentProject);
-            showToast('Projeto selecionado: "'+currentProject+'"','#2a5c3f');
             closeModal();
             cloudLoad();
           });
           list.appendChild(div);
         });
       })
-      .catch(function(e){ list.innerHTML='<div style="color:#c0392b;">Erro: '+e.message+'</div>'; });
+      .catch(function(e){
+        list.innerHTML='<div style="color:#c0392b;padding:8px;">Erro: '+e.message+'</div>';
+      });
   }
 
   function createProject(){
     var name=document.getElementById('modal-new-name').value.trim();
     if(!name){ showToast('Digite um nome para o projeto.','#b85c00'); return; }
-    currentProject=name;
-    localStorage.setItem('pf_current_proj',currentProject);
-    els=[]; selId=null; draw(); updCnt();
-    cloudSave();
-    closeModal();
-    showToast('Novo projeto "'+name+'" criado!','#2a5c3f');
+    // Limpar canvas para o novo projeto
+    if(!confirm('Criar projeto "'+name+'"? O canvas atual será limpo.')) return;
+    currentProject = name;
+    localStorage.setItem('pf_current_proj', currentProject);
+    els = []; selId = null; nid = 1;
+    closeSF(); closePnl(); draw(); updCnt();
+    // Salvar imediatamente na nuvem com o novo nome
+    var payload = { els:[], SC:SC, ts:Date.now(), name:currentProject, updatedAt:new Date().toISOString() };
+    fbDb.collection(FB_COLLECTION).doc(currentProject).set(payload)
+      .then(function(){
+        showToast('✅ Projeto "'+name+'" criado!','#2a5c3f');
+        document.getElementById('modal-new-name').value = '';
+        closeModal();
+      })
+      .catch(function(e){ showToast('Erro ao criar: '+e.message,'#c0392b'); });
   }
 
   function deleteCurrentProject(){
