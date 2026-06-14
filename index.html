@@ -923,7 +923,9 @@ function applyPnl(){
         els[gi].roofOrient= ro;
       }
     }
-    showToast('Teto "'+rg+'": '+rt+' / '+ro+' → propagado!','#2a5c3f');
+    // Auto-salvar na nuvem imediatamente após mudar configuração de teto
+    showToast('Teto "'+rg+'": '+rt+' / '+ro+' — salvando...','#2a5c3f');
+    setTimeout(function(){ cloudSave(); }, 300);
   }
   document.getElementById('sf-label').textContent=el.label||el.type;
   closePnl(); draw();
@@ -1036,6 +1038,18 @@ draw();
       .catch(function(e){ showToast('Erro: '+e.message,'#c0392b'); });
   }
 
+
+  function normalizeEls(){
+    for(var i=0;i<els.length;i++){
+      var e=els[i];
+      if(e.type==='room'){
+        if(!e.roofGroup)  e.roofGroup='A';
+        if(!e.roofType)   e.roofType='flat';
+        if(!e.roofOrient||e.roofOrient==='NS'||e.roofOrient==='EW') e.roofOrient='V';
+      }
+    }
+  }
+
   function cloudLoad(){
     if(!initFB()) return;
     showToast('Carregando "'+currentProject+'"...','#6a3a9a');
@@ -1046,7 +1060,7 @@ draw();
         if(data.els&&data.els.length>0){
           els=data.els; selId=null; closeSF(); closePnl();
           var mx=0; for(var i=0;i<els.length;i++) if(els[i].id>mx) mx=els[i].id; nid=mx+1;
-          draw(); updCnt();
+          normalizeEls(); draw(); updCnt();
           showToast('✅ "'+currentProject+'" carregado! ('+els.length+' elem.)','#2a5c3f');
         } else { showToast('Projeto vazio na nuvem.','#b85c00'); }
       })
@@ -1139,7 +1153,7 @@ draw();
             if(data.els&&data.els.length>0){
               els=data.els; selId=null;
               var mx=0; for(var i=0;i<els.length;i++) if(els[i].id>mx) mx=els[i].id; nid=mx+1;
-              draw(); updCnt();
+              normalizeEls(); draw(); updCnt();
               showToast('✅ "'+currentProject+'" carregado!','#2a5c3f');
             }
           } else {
