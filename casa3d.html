@@ -456,15 +456,18 @@ function buildGlobalRoof(els, cx, cy, H){
     if(el.type!=='room') return;
     var g=el.roofGroup||'A';
     var t=el.roofType||'flat';
-    if(!groups[g]) groups[g]={type:t,orient:el.roofOrient||'V',rooms:[]};
+    if(!groups[g]) groups[g]={type:'flat',orient:'V',rooms:[]};
     groups[g].rooms.push(el);
-    // type e orient: usar do elemento que tiver roofOrient definido explicitamente
-    if(el.roofOrient){ groups[g].type=t; groups[g].orient=el.roofOrient; }
+    // Sempre atualizar com o valor do elemento atual
+    groups[g].type   = el.roofType   || groups[g].type;
+    groups[g].orient = el.roofOrient || groups[g].orient;
   });
   var rmat=new THREE.MeshLambertMaterial({color:new THREE.Color(roofColor),side:THREE.DoubleSide});
   // Toast de debug visual
-  var dbgMsg = Object.keys(groups).map(function(k){ return 'G'+k+':'+groups[k].type+'/'+groups[k].orient; }).join(' | ');
-  showToast('Tetos: '+dbgMsg, '#1a3a6a');
+  var dbgMsg = Object.keys(groups).map(function(k){
+    return 'Grp '+k+': '+groups[k].type+' / orient='+groups[k].orient+' ('+groups[k].rooms.length+'coms)';
+  }).join('\n');
+  showToast('DEBUG: '+dbgMsg, '#1a3a6a');
   Object.keys(groups).forEach(function(gk){
     var group=groups[gk], rooms=group.rooms, rtype=group.type;
     var minX=Infinity,maxX=-Infinity,minZ=Infinity,maxZ=-Infinity;

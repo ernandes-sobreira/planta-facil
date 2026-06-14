@@ -890,7 +890,7 @@ function openPnl(el){
   if(isRoom){
     document.getElementById('proofgroup').value=el.roofGroup||'A';
     document.getElementById('prooftype').value=el.roofType||'flat';
-    document.getElementById('prooforient').value=el.roofOrient||'NS';
+    document.getElementById('prooforient').value=el.roofOrient||'V';
   }
   document.getElementById('pr-rooforient').style.display=isRoom?'flex':'none';
   if(isText){ document.getElementById('ptext').value=el.text||''; document.getElementById('pfontsize').value=el.fontSize||14; }
@@ -910,17 +910,20 @@ function applyPnl(){
   el.alpha=parseFloat(document.getElementById('palpha').value);
   if(el.type==='textbox'){ el.text=document.getElementById('ptext').value; el.fontSize=parseInt(document.getElementById('pfontsize').value)||14; }
   if(el.type==='room'){
-    el.roofGroup=document.getElementById('proofgroup').value||'A';
-    el.roofType=document.getElementById('prooftype').value||'flat';
-    el.roofOrient=document.getElementById('prooforient').value||'V';
-    // Propagar tipo e orientação para todos do mesmo grupo
-    var grp=el.roofGroup;
+    var rg = document.getElementById('proofgroup').value.trim()||'A';
+    var rt = document.getElementById('prooftype').value||'flat';
+    var ro = document.getElementById('prooforient').value||'V';
+    el.roofGroup  = rg;
+    el.roofType   = rt;
+    el.roofOrient = ro;
+    // Propagar para todos do mesmo grupo
     for(var gi=0;gi<els.length;gi++){
-      if(els[gi].type==='room' && els[gi].roofGroup===grp && els[gi].id!==el.id){
-        els[gi].roofType=el.roofType;
-        els[gi].roofOrient=el.roofOrient;
+      if(els[gi].type==='room' && els[gi].roofGroup===rg && els[gi].id!==el.id){
+        els[gi].roofType  = rt;
+        els[gi].roofOrient= ro;
       }
     }
+    showToast('Teto "'+rg+'": '+rt+' / '+ro+' → propagado!','#2a5c3f');
   }
   document.getElementById('sf-label').textContent=el.label||el.type;
   closePnl(); draw();
