@@ -61,8 +61,8 @@ canvas{display:block;touch-action:none;}
 #sf-copy{background:#5b9bd5;color:#fff;}
 #sf-del{background:#c0392b;color:#fff;}
 #sf-close{background:#eee;color:#444;}
-#pnl{display:none;position:fixed;bottom:60px;left:16px;background:#fff;border:2px solid #e0d8cc;border-radius:12px;padding:12px 14px;z-index:200;box-shadow:0 4px 24px rgba(0,0,0,.18);width:300px;max-height:80vh;overflow-y:auto;cursor:default;}
-#pnl-drag{cursor:move;background:#f0ece6;margin:-12px -14px 10px;padding:8px 14px;border-radius:10px 10px 0 0;display:flex;align-items:center;justify-content:space-between;user-select:none;}
+#pnl{display:none;position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:2px solid #e0d8cc;border-radius:12px 12px 0 0;padding:12px 14px 24px;z-index:200;box-shadow:0 -4px 24px rgba(0,0,0,.18);max-height:75vh;overflow-y:auto;cursor:default;}
+#pnl-drag{cursor:grab;background:#f0ece6;margin:-12px -14px 10px;padding:10px 14px;border-radius:12px 12px 0 0;display:flex;align-items:center;justify-content:space-between;user-select:none;}
 #pnl-drag span{font-size:11px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.5px;}
 #pnl h3{display:none;}
 .pr{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;font-size:12px;}
@@ -150,6 +150,7 @@ canvas{display:block;touch-action:none;}
       <button id="btn-cloud-load-sb" style="background:#9b59b6;color:#fff;border-color:#9b59b6;">⬇️ Nuvem</button>
       <button id="btn-projects-sb" style="background:#2a3a6a;color:#fff;border-color:#2a3a6a;">📁 Projetos</button>
       <button id="btn-clr-sb" style="border-color:#c0392b;color:#c0392b;">✕ Limpar</button>
+      <button onclick="window.open('casa3d.html')" style="background:#1a3a6a;color:#fff;border-color:#1a3a6a;">🏠 Ver em 3D</button>
     </div>
   </div>
 </div>
@@ -379,34 +380,23 @@ var TREE_IMGS = {
   document.getElementById('btn-save-sb').onclick=function(){ saveProject(); closeSidebar(); };
   document.getElementById('btn-load-sb').onclick=function(){ loadProject(); closeSidebar(); };
 
-  // ---- DRAG DO PAINEL DE EDIÇÃO ----
+  // ---- DRAG DO PAINEL (só desktop) ----
   (function(){
+    if('ontouchstart' in window) return; // no mobile, painel fica fixo embaixo
     var el = document.getElementById('pnl');
     var drag = document.getElementById('pnl-drag');
     var ox=0,oy=0,dragging=false;
     drag.addEventListener('mousedown',function(e){
       dragging=true; ox=e.clientX-el.offsetLeft; oy=e.clientY-el.offsetTop;
+      el.style.bottom='auto';
       e.preventDefault();
     });
-    drag.addEventListener('touchstart',function(e){
-      dragging=true;
-      ox=e.touches[0].clientX-el.offsetLeft;
-      oy=e.touches[0].clientY-el.offsetTop;
-    },{passive:true});
     document.addEventListener('mousemove',function(e){
       if(!dragging)return;
-      el.style.left=Math.max(0,e.clientX-ox)+'px';
-      el.style.top=Math.max(0,e.clientY-oy)+'px';
-      el.style.bottom='auto';
+      el.style.left=Math.max(0,Math.min(window.innerWidth-el.offsetWidth,e.clientX-ox))+'px';
+      el.style.top=Math.max(0,Math.min(window.innerHeight-el.offsetHeight,e.clientY-oy))+'px';
     });
-    document.addEventListener('touchmove',function(e){
-      if(!dragging)return;
-      el.style.left=Math.max(0,e.touches[0].clientX-ox)+'px';
-      el.style.top=Math.max(0,e.touches[0].clientY-oy)+'px';
-      el.style.bottom='auto';
-    },{passive:true});
     document.addEventListener('mouseup',function(){dragging=false;});
-    document.addEventListener('touchend',function(){dragging=false;});
   })();
 
   function closePnl2(){ closePnl(); }
