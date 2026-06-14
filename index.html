@@ -1160,4 +1160,33 @@ draw();
 
   // Auto-save local a cada 30s
   setInterval(function(){ if(pf().els.length>0) saveProject(); }, 30000);
+
+  // Auto-load ao abrir: tenta carregar do Firebase
+  setTimeout(function(){
+    if(initFB()){
+      showToastG('Carregando "'+currentProject+'"...','#2a5c3f');
+      fbDb.collection(FB_COL).doc(currentProject).get()
+        .then(function(doc){
+          if(!doc.exists){
+            // Tentar localStorage como fallback
+            loadProject();
+            return;
+          }
+          var data=doc.data();
+          if(data.els&&data.els.length>0){
+            pf().els=data.els;
+            pf().selId=null; pf().closeSF(); pf().closePnl();
+            var mx=0;
+            for(var i=0;i<pf().els.length;i++) if(pf().els[i].id>mx) mx=pf().els[i].id;
+            pf().nid=mx+1;
+            pf().draw(); pf().updCnt();
+            showToastG('✅ "'+currentProject+'" carregado!','#2a5c3f');
+          }
+        })
+        .catch(function(e){
+          // Fallback para localStorage
+          loadProject();
+        });
+    }
+  }, 800);
 </script>
