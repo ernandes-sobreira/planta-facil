@@ -462,7 +462,9 @@ function buildGlobalRoof(els, cx, cy, H){
     if(el.roofOrient){ groups[g].type=t; groups[g].orient=el.roofOrient; }
   });
   var rmat=new THREE.MeshLambertMaterial({color:new THREE.Color(roofColor),side:THREE.DoubleSide});
-  console.log('GRUPOS:', JSON.stringify(Object.keys(groups).map(function(k){ return {g:k, type:groups[k].type, orient:groups[k].orient, n:groups[k].rooms.length}; })));
+  // Toast de debug visual
+  var dbgMsg = Object.keys(groups).map(function(k){ return 'G'+k+':'+groups[k].type+'/'+groups[k].orient; }).join(' | ');
+  showToast('Tetos: '+dbgMsg, '#1a3a6a');
   Object.keys(groups).forEach(function(gk){
     var group=groups[gk], rooms=group.rooms, rtype=group.type;
     var minX=Infinity,maxX=-Infinity,minZ=Infinity,maxZ=-Infinity;
@@ -485,11 +487,11 @@ function buildGlobalRoof(els, cx, cy, H){
       makeSolarPanels(minX,minZ,W,D,H);
     } else if(rtype==='gable'){
       var peak=H+Math.min(W,D)*0.4;
-      var orient=group.orient||'NS';
+      var orient=group.orient||'V';
       buildGableRoof(minX,maxX,minZ,maxZ,cx2,cz2,H,peak,ov,rmat,orient);
     } else if(rtype==='shed'){
       var peakS=H+Math.max(W,D)*0.3;
-      var orient2=group.orient||'NS';
+      var orient2=group.orient||'V';
       buildShedRoof(minX,maxX,minZ,maxZ,H,peakS,ov,rmat,orient2);
     }
   });
