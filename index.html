@@ -464,6 +464,12 @@ var TREE_IMGS = {
   document.getElementById('btn-cloud-load').onclick = cloudLoad;
   document.getElementById('btn-projects').onclick = openModal;
 
+  // Expor funções chamadas por onclick inline no HTML
+  window.createProject = createProject;
+  window.deleteCurrentProject = deleteCurrentProject;
+  window.closeModal = closeModal;
+  window.closePnl2 = closePnl;
+
   // Auto-save local a cada 30s
   setInterval(function(){ if(els.length>0) saveProject(); }, 30000);
   document.getElementById('btn-png').onclick=exportPNG;
