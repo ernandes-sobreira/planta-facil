@@ -166,6 +166,13 @@ h1 span{color:#b85c00;}
       <option value="solar">Solar</option>
     </select>
   </div>
+  <div class="pr" id="pr-rooforient" style="display:none">
+    <label>Orientação</label>
+    <select id="prooforient">
+      <option value="NS">↕ Norte-Sul</option>
+      <option value="EW">↔ Leste-Oeste</option>
+    </select>
+  </div>
   <div class="pr" id="pr-text" style="display:none"><label>Texto</label><input type="text" id="ptext"/></div>
   <div class="pr" id="pr-fontsize" style="display:none"><label>Fonte (px)</label><input type="number" id="pfontsize" value="14" min="8" max="72"/></div>
   <div class="pbts">
@@ -876,7 +883,12 @@ function openPnl(el){
   document.getElementById('pr-alpha').style.display=(isRoom||el.type==='wall'||isText)?'flex':'none';
   document.getElementById('pr-roofgroup').style.display=isRoom?'flex':'none';
   document.getElementById('pr-rooftype').style.display=isRoom?'flex':'none';
-  if(isRoom){ document.getElementById('proofgroup').value=el.roofGroup||'A'; document.getElementById('prooftype').value=el.roofType||'flat'; }
+  if(isRoom){
+    document.getElementById('proofgroup').value=el.roofGroup||'A';
+    document.getElementById('prooftype').value=el.roofType||'flat';
+    document.getElementById('prooforient').value=el.roofOrient||'NS';
+  }
+  document.getElementById('pr-rooforient').style.display=isRoom?'flex':'none';
   if(isText){ document.getElementById('ptext').value=el.text||''; document.getElementById('pfontsize').value=el.fontSize||14; }
   pnl.classList.add('open');
 }
@@ -896,6 +908,7 @@ function applyPnl(){
   if(el.type==='room'){
     el.roofGroup=document.getElementById('proofgroup').value||'A';
     el.roofType=document.getElementById('prooftype').value||'flat';
+    el.roofOrient=document.getElementById('prooforient').value||'NS';
   }
   document.getElementById('sf-label').textContent=el.label||el.type;
   closePnl(); draw();

@@ -456,9 +456,10 @@ function buildGlobalRoof(els, cx, cy, H){
     if(el.type!=='room') return;
     var g=el.roofGroup||'A';
     var t=el.roofType||'flat';
-    if(!groups[g]) groups[g]={type:t,rooms:[]};
+    if(!groups[g]) groups[g]={type:t,orient:'NS',rooms:[]};
     groups[g].rooms.push(el);
     groups[g].type=t;
+    groups[g].orient=el.roofOrient||'NS';
   });
   var rmat=new THREE.MeshLambertMaterial({color:new THREE.Color(roofColor),side:THREE.DoubleSide});
   Object.keys(groups).forEach(function(gk){
@@ -483,54 +484,51 @@ function buildGlobalRoof(els, cx, cy, H){
       makeSolarPanels(minX,minZ,W,D,H);
     } else if(rtype==='gable'){
       var peak=H+Math.min(W,D)*0.4;
-      buildGableRoof(minX,maxX,minZ,maxZ,cx2,cz2,H,peak,ov,rmat);
+      var orient=group.orient||'NS';
+      buildGableRoof(minX,maxX,minZ,maxZ,cx2,cz2,H,peak,ov,rmat,orient);
     } else if(rtype==='shed'){
-      var peakS=H+D*0.3;
-      buildShedRoof(minX,maxX,minZ,maxZ,H,peakS,ov,rmat);
+      var peakS=H+Math.max(W,D)*0.3;
+      var orient2=group.orient||'NS';
+      buildShedRoof(minX,maxX,minZ,maxZ,H,peakS,ov,rmat,orient2);
     }
   });
 }
 
-function buildGableRoof(minX,maxX,minZ,maxZ,cx2,cz2,H,peak,ov,rmat){
-  // Cumeeiro no eixo Z (corre de norte a sul), águas para leste e oeste
+function buildGableRoof(minX,maxX,minZ,maxZ,cx2,cz2,H,peak,ov,rmat,orient){
   function face(v){ var g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.BufferAttribute(new Float32Array(v),3)); g.setIndex(new THREE.BufferAttribute(new Uint16Array([0,2,1,0,3,2]),1)); g.computeVertexNormals(); var m=new THREE.Mesh(g,rmat); m.castShadow=true; scene.add(m); objects3d.roofs.push(m); }
-  // Água oeste (cumeeiro → borda oeste/minX)
-  face([minX-ov,H,minZ-ov, minX-ov,H,maxZ+ov, cx2,peak,maxZ+ov, cx2,peak,minZ-ov]);
-  // Água leste (cumeeiro → borda leste/maxX)
-  face([cx2,peak,minZ-ov, cx2,peak,maxZ+ov, maxX+ov,H,maxZ+ov, maxX+ov,H,minZ-ov]);
-  // Empenas (norte e sul)
-  [minZ-ov, maxZ+ov].forEach(function(zp){
-    var g=new THREE.BufferGeometry();
-    g.setAttribute('position',new THREE.BufferAttribute(new Float32Array([minX-ov,H,zp, maxX+ov,H,zp, cx2,peak,zp]),3));
-    g.setIndex(new THREE.BufferAttribute(new Uint16Array([0,1,2]),1));
-    g.computeVertexNormals();
-    var m=new THREE.Mesh(g,rmat); scene.add(m); objects3d.roofs.push(m);
-  });
-  // Cumeeiro (viga longitudinal N-S)
+  function tri(v){ var g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.BufferAttribute(new Float32Array(v),3)); g.setIndex(new THREE.BufferAttribute(new Uint16Array([0,1,2]),1)); g.computeVertexNormals(); var m=new THREE.Mesh(g,rmat); scene.add(m); objects3d.roofs.push(m); }
   var rm=new THREE.MeshLambertMaterial({color:0x7a4a1a});
-  var ridge=new THREE.Mesh(new THREE.BoxGeometry(0.08,0.08,maxZ-minZ+ov*2),rm);
-  ridge.position.set(cx2,peak,cz2); scene.add(ridge); objects3d.roofs.push(ridge);
+  if(orient==='EW'){
+    // Cumeeiro L-O: águas caem para norte e sul
+    face([minX-ov,H,minZ-ov, maxX+ov,H,minZ-ov, maxX+ov,peak,cz2, minX-ov,peak,cz2]);
+    face([minX-ov,peak,cz2, maxX+ov,peak,cz2, maxX+ov,H,maxZ+ov, minX-ov,H,maxZ+ov]);
+    [minX-ov,maxX+ov].forEach(function(xp){ tri([xp,H,minZ-ov, xp,H,maxZ+ov, xp,peak,cz2]); });
+    var ridge=new THREE.Mesh(new THREE.BoxGeometry(maxX-minX+ov*2,0.08,0.08),rm);
+    ridge.position.set(cx2,peak,cz2); scene.add(ridge); objects3d.roofs.push(ridge);
+  } else {
+    // Cumeeiro N-S (padrão): águas caem para leste e oeste
+    face([minX-ov,H,minZ-ov, minX-ov,H,maxZ+ov, cx2,peak,maxZ+ov, cx2,peak,minZ-ov]);
+    face([cx2,peak,minZ-ov, cx2,peak,maxZ+ov, maxX+ov,H,maxZ+ov, maxX+ov,H,minZ-ov]);
+    [minZ-ov,maxZ+ov].forEach(function(zp){ tri([minX-ov,H,zp, maxX+ov,H,zp, cx2,peak,zp]); });
+    var ridge2=new THREE.Mesh(new THREE.BoxGeometry(0.08,0.08,maxZ-minZ+ov*2),rm);
+    ridge2.position.set(cx2,peak,cz2); scene.add(ridge2); objects3d.roofs.push(ridge2);
+  }
 }
 
-function buildShedRoof(minX,maxX,minZ,maxZ,H,peakH,ov,rmat){
-  // 1 água: inclinada de minX (baixo) para maxX (alto) — leste para oeste
-  var g=new THREE.BufferGeometry();
-  g.setAttribute('position',new THREE.BufferAttribute(new Float32Array([
-    minX-ov,H,    minZ-ov,
-    minX-ov,H,    maxZ+ov,
-    maxX+ov,peakH,maxZ+ov,
-    maxX+ov,peakH,minZ-ov]),3));
-  g.setIndex(new THREE.BufferAttribute(new Uint16Array([0,2,1,0,3,2]),1));
-  g.computeVertexNormals();
-  var m=new THREE.Mesh(g,rmat); m.castShadow=true; scene.add(m); objects3d.roofs.push(m);
-  // Empenas norte e sul
-  [minZ-ov, maxZ+ov].forEach(function(zp){
-    var g2=new THREE.BufferGeometry();
-    g2.setAttribute('position',new THREE.BufferAttribute(new Float32Array([minX-ov,H,zp, maxX+ov,H,zp, maxX+ov,peakH,zp]),3));
-    g2.setIndex(new THREE.BufferAttribute(new Uint16Array([0,1,2]),1));
-    g2.computeVertexNormals();
-    var m2=new THREE.Mesh(g2,rmat); scene.add(m2); objects3d.roofs.push(m2);
-  });
+function buildShedRoof(minX,maxX,minZ,maxZ,H,peakH,ov,rmat,orient){
+  function face(v){ var g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.BufferAttribute(new Float32Array(v),3)); g.setIndex(new THREE.BufferAttribute(new Uint16Array([0,2,1,0,3,2]),1)); g.computeVertexNormals(); var m=new THREE.Mesh(g,rmat); m.castShadow=true; scene.add(m); objects3d.roofs.push(m); }
+  function tri(v){ var g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.BufferAttribute(new Float32Array(v),3)); g.setIndex(new THREE.BufferAttribute(new Uint16Array([0,1,2]),1)); g.computeVertexNormals(); var m=new THREE.Mesh(g,rmat); scene.add(m); objects3d.roofs.push(m); }
+  if(orient==='EW'){
+    // 1 água L-O: sobe de sul (minZ, baixo) para norte (maxZ, alto)
+    face([minX-ov,H,minZ-ov, maxX+ov,H,minZ-ov, maxX+ov,peakH,maxZ+ov, minX-ov,peakH,maxZ+ov]);
+    // Empenas leste e oeste
+    [minX-ov,maxX+ov].forEach(function(xp){ tri([xp,H,minZ-ov, xp,H,maxZ+ov, xp,peakH,maxZ+ov]); });
+  } else {
+    // 1 água N-S (padrão): sobe de oeste (minX, baixo) para leste (maxX, alto)
+    face([minX-ov,H,minZ-ov, minX-ov,H,maxZ+ov, maxX+ov,peakH,maxZ+ov, maxX+ov,peakH,minZ-ov]);
+    // Empenas norte e sul
+    [minZ-ov,maxZ+ov].forEach(function(zp){ tri([minX-ov,H,zp, maxX+ov,H,zp, maxX+ov,peakH,zp]); });
+  }
 }
 
 
