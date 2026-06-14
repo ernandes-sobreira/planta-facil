@@ -153,6 +153,19 @@ h1 span{color:#b85c00;}
       <option value="0">Transparente</option>
     </select>
   </div>
+  <div class="pr" id="pr-roofgroup" style="display:none">
+    <label>Grupo teto</label>
+    <input type="text" id="proofgroup" placeholder="ex: A" style="width:60px;" maxlength="4"/>
+  </div>
+  <div class="pr" id="pr-rooftype" style="display:none">
+    <label>Tipo teto</label>
+    <select id="prooftype">
+      <option value="flat">Plano (laje)</option>
+      <option value="gable">2 águas</option>
+      <option value="shed">1 água</option>
+      <option value="solar">Solar</option>
+    </select>
+  </div>
   <div class="pr" id="pr-text" style="display:none"><label>Texto</label><input type="text" id="ptext"/></div>
   <div class="pr" id="pr-fontsize" style="display:none"><label>Fonte (px)</label><input type="number" id="pfontsize" value="14" min="8" max="72"/></div>
   <div class="pbts">
@@ -856,10 +869,14 @@ function openPnl(el){
   document.getElementById('pcolor').value=(el.color&&el.color.startsWith('#'))?el.color:'#dff0e8';
   document.getElementById('palpha').value=el.alpha!==undefined?el.alpha:1;
   var isText=(el.type==='textbox');
+  var isRoom=(el.type==='room');
   document.getElementById('pr-text').style.display=isText?'flex':'none';
   document.getElementById('pr-fontsize').style.display=isText?'flex':'none';
   document.getElementById('pr-color').style.display=isText?'none':'flex';
-  document.getElementById('pr-alpha').style.display=(el.type==='room'||el.type==='wall'||el.type==='textbox')?'flex':'none';
+  document.getElementById('pr-alpha').style.display=(isRoom||el.type==='wall'||isText)?'flex':'none';
+  document.getElementById('pr-roofgroup').style.display=isRoom?'flex':'none';
+  document.getElementById('pr-rooftype').style.display=isRoom?'flex':'none';
+  if(isRoom){ document.getElementById('proofgroup').value=el.roofGroup||'A'; document.getElementById('prooftype').value=el.roofType||'flat'; }
   if(isText){ document.getElementById('ptext').value=el.text||''; document.getElementById('pfontsize').value=el.fontSize||14; }
   pnl.classList.add('open');
 }
@@ -876,6 +893,10 @@ function applyPnl(){
   if(el.type!=='textbox') el.color=document.getElementById('pcolor').value;
   el.alpha=parseFloat(document.getElementById('palpha').value);
   if(el.type==='textbox'){ el.text=document.getElementById('ptext').value; el.fontSize=parseInt(document.getElementById('pfontsize').value)||14; }
+  if(el.type==='room'){
+    el.roofGroup=document.getElementById('proofgroup').value||'A';
+    el.roofType=document.getElementById('prooftype').value||'flat';
+  }
   document.getElementById('sf-label').textContent=el.label||el.type;
   closePnl(); draw();
 }

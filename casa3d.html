@@ -348,8 +348,8 @@ function buildScene(els){
     }
   });
 
-  // Telhado global (duas águas cobre toda a planta)
-  if(showRoof && roofType==='gable'){
+  // Telhados por grupo (lê roofGroup e roofType de cada ambiente)
+  if(showRoof){
     buildGlobalRoof(els, cx, cy, wallHeight);
   }
 
@@ -413,10 +413,7 @@ function makeRoom(x, z, w, d, color){
   // Leste
   var we=makeSolidWall(x+w-T,z,T,d,H,mat); objects3d.walls.push(we);
 
-  // Teto (se visível)
-  if(showRoof){
-    buildRoofForRoom(x,z,w,d,H);
-  }
+  // Teto é gerado globalmente por buildGlobalRoof
 }
 
 function makeSolidWall(x,z,w,d,h,mat){
@@ -454,73 +451,78 @@ function buildRoofForRoom(x,z,w,d,H){
 }
 
 function buildGlobalRoof(els, cx, cy, H){
-  if(roofType!=='gable') return;
-  // Calcular bbox de todos os rooms
-  var rooms = els.filter(function(e){ return e.type==='room'; });
-  if(rooms.length===0) return;
-  var minX=Infinity,maxX=-Infinity,minZ=Infinity,maxZ=-Infinity;
-  rooms.forEach(function(r){
-    var x=r.xm-cx, z=r.ym-cy;
-    minX=Math.min(minX,x); maxX=Math.max(maxX,x+r.wm);
-    minZ=Math.min(minZ,z); maxZ=Math.max(maxZ,z+r.hm);
+  var groups={};
+  els.forEach(function(el){
+    if(el.type!=='room') return;
+    var g=el.roofGroup||'A';
+    var t=el.roofType||'flat';
+    if(!groups[g]) groups[g]={type:t,rooms:[]};
+    groups[g].rooms.push(el);
+    groups[g].type=t;
   });
-  var W=maxX-minX, D=maxZ-minZ;
-  var cx2=(minX+maxX)/2, cz2=(minZ+maxZ)/2;
-  var peak = H + Math.min(W,D)*0.35; // altura do cumeeiro
-  var overhang = 0.6;
-  var rmat = new THREE.MeshLambertMaterial({color:new THREE.Color(roofColor), side:THREE.DoubleSide});
-
-  // Duas águas ao longo do eixo X (cumeeiro corre de leste a oeste)
-  // Vertice do cumeeiro no centro Z, vertice das bordas nos extremos Z
-  // Face 1 (frente): cumeeiro -> borda sul
-  // Face 2 (trás):   cumeeiro -> borda norte
-  function makeRoofFace(x0,z0,x1,z1,yt,yb,ovX,ovZ){
-    // Plano inclinado: 4 vértices
-    var geo = new THREE.BufferGeometry();
-    var verts = new Float32Array([
-      x0-ovX, yt, z0,    // topo esq
-      x1+ovX, yt, z0,    // topo dir
-      x1+ovX, yb, z1+ovZ, // base dir
-      x0-ovX, yb, z1+ovZ  // base esq
-    ]);
-    var idx = new Uint16Array([0,2,1, 0,3,2]);
-    geo.setAttribute('position', new THREE.BufferAttribute(verts,3));
-    geo.setIndex(new THREE.BufferAttribute(idx,1));
-    geo.computeVertexNormals();
-    var mesh = new THREE.Mesh(geo, rmat);
-    mesh.castShadow=true; mesh.receiveShadow=true;
-    scene.add(mesh); objects3d.roofs.push(mesh);
-  }
-
-  // Água sul (inclinada de cumeeiro para frente)
-  makeRoofFace(minX, cz2, maxX, minZ, peak, H, overhang, -overhang);
-  // Água norte (inclinada de cumeeiro para trás)
-  makeRoofFace(minX, cz2, maxX, maxZ, peak, H, overhang, overhang);
-
-  // Triângulos das empenas (leste e oeste)
-  function makeGable(xpos){
-    var geo = new THREE.BufferGeometry();
-    var verts = new Float32Array([
-      xpos, H,    minZ-overhang,
-      xpos, H,    maxZ+overhang,
-      xpos, peak, cz2
-    ]);
-    var idx = new Uint16Array([0,1,2]);
-    geo.setAttribute('position', new THREE.BufferAttribute(verts,3));
-    geo.setIndex(new THREE.BufferAttribute(idx,1));
-    geo.computeVertexNormals();
-    var m = new THREE.Mesh(geo, rmat);
-    scene.add(m); objects3d.roofs.push(m);
-  }
-  makeGable(minX-overhang);
-  makeGable(maxX+overhang);
-
-  // Cumeeiro (viga)
-  var ridgeMat = new THREE.MeshLambertMaterial({color:0x8a5a2a});
-  var ridge = new THREE.Mesh(new THREE.BoxGeometry(W+overhang*2, 0.08, 0.08), ridgeMat);
-  ridge.position.set(cx2, peak, cz2);
-  scene.add(ridge); objects3d.roofs.push(ridge);
+  var rmat=new THREE.MeshLambertMaterial({color:new THREE.Color(roofColor),side:THREE.DoubleSide});
+  Object.keys(groups).forEach(function(gk){
+    var group=groups[gk], rooms=group.rooms, rtype=group.type;
+    var minX=Infinity,maxX=-Infinity,minZ=Infinity,maxZ=-Infinity;
+    rooms.forEach(function(r){
+      var x=r.xm-cx,z=r.ym-cy;
+      minX=Math.min(minX,x);maxX=Math.max(maxX,x+r.wm);
+      minZ=Math.min(minZ,z);maxZ=Math.max(maxZ,z+r.hm);
+    });
+    var W=maxX-minX,D=maxZ-minZ;
+    var cx2=(minX+maxX)/2,cz2=(minZ+maxZ)/2;
+    var ov=0.5;
+    if(rtype==='flat'){
+      var roof=new THREE.Mesh(new THREE.BoxGeometry(W+ov,0.15,D+ov),rmat);
+      roof.position.set(cx2,H+0.07,cz2);
+      roof.receiveShadow=true; scene.add(roof); objects3d.roofs.push(roof);
+    } else if(rtype==='solar'){
+      var roof2=new THREE.Mesh(new THREE.BoxGeometry(W+ov,0.15,D+ov),rmat);
+      roof2.position.set(cx2,H+0.07,cz2);
+      scene.add(roof2); objects3d.roofs.push(roof2);
+      makeSolarPanels(minX,minZ,W,D,H);
+    } else if(rtype==='gable'){
+      var peak=H+Math.min(W,D)*0.4;
+      buildGableRoof(minX,maxX,minZ,maxZ,cx2,cz2,H,peak,ov,rmat);
+    } else if(rtype==='shed'){
+      var peakS=H+D*0.3;
+      buildShedRoof(minX,maxX,minZ,maxZ,H,peakS,ov,rmat);
+    }
+  });
 }
+
+function buildGableRoof(minX,maxX,minZ,maxZ,cx2,cz2,H,peak,ov,rmat){
+  function face(v){ var g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.BufferAttribute(new Float32Array(v),3)); g.setIndex(new THREE.BufferAttribute(new Uint16Array([0,2,1,0,3,2]),1)); g.computeVertexNormals(); var m=new THREE.Mesh(g,rmat); m.castShadow=true; scene.add(m); objects3d.roofs.push(m); }
+  face([minX-ov,H,minZ-ov, maxX+ov,H,minZ-ov, maxX+ov,peak,cz2, minX-ov,peak,cz2]);
+  face([minX-ov,peak,cz2, maxX+ov,peak,cz2, maxX+ov,H,maxZ+ov, minX-ov,H,maxZ+ov]);
+  [minX-ov,maxX+ov].forEach(function(xp){
+    var g=new THREE.BufferGeometry();
+    g.setAttribute('position',new THREE.BufferAttribute(new Float32Array([xp,H,minZ-ov, xp,H,maxZ+ov, xp,peak,cz2]),3));
+    g.setIndex(new THREE.BufferAttribute(new Uint16Array([0,1,2]),1));
+    g.computeVertexNormals();
+    var m=new THREE.Mesh(g,rmat); scene.add(m); objects3d.roofs.push(m);
+  });
+  var rm=new THREE.MeshLambertMaterial({color:0x7a4a1a});
+  var ridge=new THREE.Mesh(new THREE.BoxGeometry(maxX-minX+ov*2,0.08,0.08),rm);
+  ridge.position.set(cx2,peak,cz2); scene.add(ridge); objects3d.roofs.push(ridge);
+}
+
+function buildShedRoof(minX,maxX,minZ,maxZ,H,peakH,ov,rmat){
+  var g=new THREE.BufferGeometry();
+  g.setAttribute('position',new THREE.BufferAttribute(new Float32Array([
+    minX-ov,H,minZ-ov, maxX+ov,H,minZ-ov, maxX+ov,peakH,maxZ+ov, minX-ov,peakH,maxZ+ov]),3));
+  g.setIndex(new THREE.BufferAttribute(new Uint16Array([0,2,1,0,3,2]),1));
+  g.computeVertexNormals();
+  var m=new THREE.Mesh(g,rmat); m.castShadow=true; scene.add(m); objects3d.roofs.push(m);
+  [minX-ov,maxX+ov].forEach(function(xp){
+    var g2=new THREE.BufferGeometry();
+    g2.setAttribute('position',new THREE.BufferAttribute(new Float32Array([xp,H,minZ-ov, xp,H,maxZ+ov, xp,peakH,maxZ+ov]),3));
+    g2.setIndex(new THREE.BufferAttribute(new Uint16Array([0,1,2]),1));
+    g2.computeVertexNormals();
+    var m2=new THREE.Mesh(g2,rmat); scene.add(m2); objects3d.roofs.push(m2);
+  });
+}
+
 
 function makeSolarPanels(x,z,w,d,H){
   var panelMat = new THREE.MeshLambertMaterial({color:0x1a3a6a});
