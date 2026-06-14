@@ -11,17 +11,44 @@
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:system-ui,sans-serif;background:#f0ece6;height:100dvh;display:flex;flex-direction:column;overflow:hidden;}
 header{background:#fff;border-bottom:2px solid #e0d8cc;padding:8px 10px;flex-shrink:0;}
-.htop{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+.htop{display:flex;align-items:center;gap:8px;}
 h1{font-size:16px;font-weight:700;color:#2a5c3f;}
 h1 span{color:#b85c00;}
-#badge{background:#2a5c3f;color:#fff;font-size:11px;padding:3px 10px;border-radius:20px;font-weight:600;}
-#btn-png{margin-left:auto;background:#b85c00;color:#fff;border:none;border-radius:8px;padding:7px 12px;font-size:12px;cursor:pointer;}
-.tbar{display:flex;gap:5px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none;}
-.tbar::-webkit-scrollbar{display:none;}
-.tbar button{flex-shrink:0;padding:8px 12px;border:1.5px solid #ccc;background:#fff;border-radius:8px;font-size:12px;cursor:pointer;white-space:nowrap;-webkit-tap-highlight-color:transparent;}
-.tbar button.on{background:#2a5c3f;color:#fff;border-color:#2a5c3f;}
-.tbar button.red{border-color:#c0392b;color:#c0392b;}
-.tbar button.sel-active{background:#e67e22;color:#fff;border-color:#e67e22;}
+#badge{background:#2a5c3f;color:#fff;font-size:11px;padding:3px 10px;border-radius:20px;font-weight:600;white-space:nowrap;}
+#btn-png{margin-left:auto;background:#b85c00;color:#fff;border:none;border-radius:8px;padding:7px 12px;font-size:12px;cursor:pointer;white-space:nowrap;}
+#btn-menu{background:#2a5c3f;color:#fff;border:none;border-radius:8px;padding:7px 12px;font-size:18px;cursor:pointer;line-height:1;-webkit-tap-highlight-color:transparent;}
+
+/* Sidebar */
+#sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:300;}
+#sidebar-overlay.open{display:block;}
+#sidebar{
+  position:fixed;left:-280px;top:0;bottom:0;width:270px;
+  background:#fff;z-index:400;
+  box-shadow:4px 0 24px rgba(0,0,0,.2);
+  transition:left .25s ease;
+  overflow-y:auto;
+  display:flex;flex-direction:column;
+  padding-bottom:20px;
+}
+#sidebar.open{left:0;}
+#sidebar-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 16px;background:#2a5c3f;color:#fff;
+  font-size:15px;font-weight:700;flex-shrink:0;
+}
+#sidebar-close{background:none;border:none;color:#fff;font-size:20px;cursor:pointer;padding:0 4px;line-height:1;}
+.sb-section{padding:10px 12px 4px;}
+.sb-title{font-size:10px;text-transform:uppercase;color:#888;letter-spacing:.8px;margin-bottom:6px;font-weight:700;}
+.sb-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+.sb-grid button{
+  padding:10px 6px;border:1.5px solid #d0c8bc;background:#fff;
+  border-radius:8px;font-size:12px;cursor:pointer;text-align:center;
+  -webkit-tap-highlight-color:transparent;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis;
+}
+.sb-grid button.on{background:#2a5c3f;color:#fff;border-color:#2a5c3f;}
+.sb-grid button.sel-active{background:#e67e22;color:#fff;border-color:#e67e22;}
+.sb-grid button.sb-active{background:#2a5c3f;color:#fff;border-color:#2a5c3f;}
 .cvwrap{flex:1;overflow:hidden;position:relative;touch-action:none;}
 canvas{display:block;touch-action:none;}
 .bar{background:#2a5c3f;color:#b0e0c0;font-size:11px;padding:5px 12px;flex-shrink:0;}
@@ -60,40 +87,71 @@ canvas{display:block;touch-action:none;}
 <body>
 <header>
   <div class="htop">
+    <button id="btn-menu" title="Menu de ferramentas">☰</button>
     <h1>Planta<span>Fácil</span></h1>
-    <div id="badge">Parede</div>
     <button id="btn-png">⬇ PNG</button>
   </div>
-  <div class="tbar">
-    <button data-t="wall" class="on">▐ Parede</button>
-    <button data-t="room">⬜ Ambiente</button>
-    <button data-t="door">🚪 Porta</button>
-    <button data-t="window">🪟 Janela</button>
-    <button data-t="sink">🚿 Pia</button>
-    <button data-t="toilet">🚽 Vaso</button>
-    <button data-t="shower">⬛ Box</button>
-    <button data-t="bed">🛏 Cama</button>
-    <button data-t="wardrobe">📦 Guarda-roupa</button>
-    <button data-t="tv">📺 TV</button>
-    <button data-t="pergola">⬜ Pergolado</button>
-    <button data-t="tree_green">🌳 Verde</button>
-    <button data-t="tree_palm">🌴 Palmeira</button>
-    <button data-t="tree_purple">🌸 Roxa</button>
-    <button data-t="tree_yellow">🌼 Amarela</button>
-    <button data-t="tree_banana">🍌 Bananeira</button>
-    <button data-t="tree_guava">🍈 Goiabeira</button>
-    <button data-t="tree_inga">🌿 Ingá</button>
-    <button data-t="textbox">✏️ Texto</button>
-    <button data-t="select" id="btn-sel-tool">↖ Selecionar</button>
-    <button id="btn-cotas" style="background:#2a5c3f;color:#fff;border-color:#2a5c3f;flex-shrink:0;padding:8px 12px;border:1.5px solid;border-radius:8px;font-size:12px;cursor:pointer;">📐 Cotas</button>
-    <button id="btn-save" style="background:#1a6a9a;color:#fff;border-color:#1a6a9a;flex-shrink:0;padding:8px 12px;border:1.5px solid;border-radius:8px;font-size:12px;cursor:pointer;">💾 Local</button>
-    <button id="btn-load" style="background:#6a3a9a;color:#fff;border-color:#6a3a9a;flex-shrink:0;padding:8px 12px;border:1.5px solid;border-radius:8px;font-size:12px;cursor:pointer;">📂 Local</button>
-    <button id="btn-cloud-save" style="background:#e67e22;color:#fff;border-color:#e67e22;flex-shrink:0;padding:8px 12px;border:1.5px solid;border-radius:8px;font-size:12px;cursor:pointer;">☁️ Salvar</button>
-    <button id="btn-cloud-load" style="background:#c0392b;color:#fff;border-color:#c0392b;flex-shrink:0;padding:8px 12px;border:1.5px solid;border-radius:8px;font-size:12px;cursor:pointer;">⬇️ Carregar</button>
-    <button id="btn-projects" style="background:#2a3a6a;color:#fff;border-color:#2a3a6a;flex-shrink:0;padding:8px 12px;border:1.5px solid;border-radius:8px;font-size:12px;cursor:pointer;">📁 Projetos</button>
-    <button id="btn-clr" class="red">✕ Limpar</button>
-  </div>
 </header>
+
+<!-- Sidebar retrátil -->
+<div id="sidebar-overlay"></div>
+<div id="sidebar">
+  <div id="sidebar-header">
+    <span>🏠 Ferramentas</span>
+    <button id="sidebar-close">✕</button>
+  </div>
+
+  <div class="sb-section">
+    <div class="sb-title">Desenhar</div>
+    <div class="sb-grid">
+      <button data-t="wall" class="on">▐ Parede</button>
+      <button data-t="room">⬜ Ambiente</button>
+    </div>
+  </div>
+
+  <div class="sb-section">
+    <div class="sb-title">Elementos</div>
+    <div class="sb-grid">
+      <button data-t="door">🚪 Porta</button>
+      <button data-t="window">🪟 Janela</button>
+      <button data-t="sink">🚿 Pia</button>
+      <button data-t="toilet">🚽 Vaso</button>
+      <button data-t="shower">⬛ Box</button>
+      <button data-t="bed">🛏 Cama</button>
+      <button data-t="wardrobe">📦 Guarda-roupa</button>
+      <button data-t="tv">📺 TV</button>
+      <button data-t="pergola">🌿 Pergolado</button>
+      <button data-t="textbox">✏️ Texto</button>
+    </div>
+  </div>
+
+  <div class="sb-section">
+    <div class="sb-title">Vegetação</div>
+    <div class="sb-grid">
+      <button data-t="tree_green">🌳 Verde</button>
+      <button data-t="tree_palm">🌴 Palmeira</button>
+      <button data-t="tree_purple">🌸 Roxa</button>
+      <button data-t="tree_yellow">🌼 Amarela</button>
+      <button data-t="tree_banana">🍌 Bananeira</button>
+      <button data-t="tree_guava">🍈 Goiabeira</button>
+      <button data-t="tree_inga">🌿 Ingá</button>
+    </div>
+  </div>
+
+  <div class="sb-section">
+    <div class="sb-title">Ações</div>
+    <div class="sb-grid">
+      <button data-t="select" id="btn-sel-tool">↖ Selecionar</button>
+      <button id="btn-cotas-sb" class="sb-active">📐 Cotas</button>
+      <button id="btn-save-sb">💾 Local</button>
+      <button id="btn-load-sb">📂 Local</button>
+      <button id="btn-cloud-save-sb" style="background:#e67e22;color:#fff;border-color:#e67e22;">☁️ Salvar</button>
+      <button id="btn-cloud-load-sb" style="background:#9b59b6;color:#fff;border-color:#9b59b6;">⬇️ Nuvem</button>
+      <button id="btn-projects-sb" style="background:#2a3a6a;color:#fff;border-color:#2a3a6a;">📁 Projetos</button>
+      <button id="btn-clr-sb" style="border-color:#c0392b;color:#c0392b;">✕ Limpar</button>
+    </div>
+  </div>
+</div>
 
 <!-- Modal de projetos -->
 <div id="modal-proj">
@@ -166,7 +224,7 @@ var TREE_IMGS = {
   var msr   = document.getElementById('msr');
   var pnl   = document.getElementById('pnl');
   var sfloat= document.getElementById('selfloat');
-  var badge = document.getElementById('badge');
+  var badge = { textContent: '' }; // badge removido do header
   var hint  = document.getElementById('hint');
   var cnt_el= document.getElementById('cnt');
 
@@ -218,15 +276,30 @@ var TREE_IMGS = {
   window.addEventListener('resize',resize_canvas);
   resize_canvas();
 
-  // ---- TOOLBAR ----
-  document.querySelector('.tbar').addEventListener('click',function(e){
+  // Sidebar toggle
+  var sidebar = document.getElementById('sidebar');
+  var overlay = document.getElementById('sidebar-overlay');
+  function openSidebar(){ sidebar.classList.add('open'); overlay.classList.add('open'); }
+  function closeSidebar(){ sidebar.classList.remove('open'); overlay.classList.remove('open'); }
+  document.getElementById('btn-menu').onclick = openSidebar;
+  document.getElementById('sidebar-close').onclick = closeSidebar;
+  overlay.addEventListener('click', closeSidebar);
+
+  // Fechar sidebar ao escolher ferramenta
+  document.getElementById('sidebar').addEventListener('click', function(e){
+    var b = e.target.closest('button[data-t]');
+    if(b){ closeSidebar(); }
+  });
+
+  // Toolbar — escutar na sidebar agora
+  document.getElementById('sidebar').addEventListener('click',function(e){
     var b=e.target.closest('button[data-t]');
     if(!b)return;
     setTool(b.getAttribute('data-t'));
   });
   function setTool(t){
     tool=t;
-    document.querySelectorAll('button[data-t]').forEach(function(b){
+    document.querySelectorAll('#sidebar button[data-t]').forEach(function(b){
       b.classList.remove('on','sel-active');
       if(b.getAttribute('data-t')===t)b.classList.add(t==='select'?'sel-active':'on');
     });
@@ -235,14 +308,22 @@ var TREE_IMGS = {
     else{selId=null;closeSF();draw();}
   }
 
-  var btnCotas=document.getElementById('btn-cotas');
+  var btnCotas = document.getElementById('btn-cotas-sb');
   btnCotas.addEventListener('click',function(){
     showCotas=!showCotas;
-    btnCotas.style.background=showCotas?'#2a5c3f':'#fff';
-    btnCotas.style.color=showCotas?'#fff':'#2a5c3f';
+    btnCotas.classList.toggle('sb-active', showCotas);
     draw();
+    closeSidebar();
   });
-  document.getElementById('btn-clr').onclick=function(){if(confirm('Limpar tudo?')){els=[];selId=null;closeSF();closePnl();draw();updCnt();}};
+  document.getElementById('btn-clr-sb').onclick=function(){
+    if(confirm('Limpar tudo?')){els=[];selId=null;closeSF();closePnl();draw();updCnt();}
+    closeSidebar();
+  };
+  document.getElementById('btn-save-sb').onclick=function(){ saveProject(); closeSidebar(); };
+  document.getElementById('btn-load-sb').onclick=function(){ loadProject(); closeSidebar(); };
+  document.getElementById('btn-cloud-save-sb').onclick=function(){ cloudSave(); closeSidebar(); };
+  document.getElementById('btn-cloud-load-sb').onclick=function(){ cloudLoad(); closeSidebar(); };
+  document.getElementById('btn-projects-sb').onclick=function(){ openModal(); closeSidebar(); };
 
   // ---- SALVAR / CARREGAR ----
   var LS_KEY = 'plantafacil_v1';
@@ -294,8 +375,8 @@ var TREE_IMGS = {
     setTimeout(function(){ t.remove(); }, 2500);
   }
 
-  document.getElementById('btn-save').onclick = saveProject;
-  document.getElementById('btn-load').onclick = loadProject;
+  document.getElementById('btn-save-sb').onclick=function(){ saveProject(); closeSidebar(); };
+  document.getElementById('btn-load-sb').onclick=function(){ loadProject(); closeSidebar(); };
 
   // ---- DRAG DO PAINEL DE EDIÇÃO ----
   (function(){
@@ -459,10 +540,6 @@ var TREE_IMGS = {
       })
       .catch(function(e){ showToast('Erro: '+e.message,'#c0392b'); });
   }
-
-  document.getElementById('btn-cloud-save').onclick = cloudSave;
-  document.getElementById('btn-cloud-load').onclick = cloudLoad;
-  document.getElementById('btn-projects').onclick = openModal;
 
   // Expor funções chamadas por onclick inline no HTML
   window.createProject = createProject;
