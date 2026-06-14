@@ -34,15 +34,27 @@ canvas{display:block;touch-action:none;}
 #sf-copy{background:#5b9bd5;color:#fff;}
 #sf-del{background:#c0392b;color:#fff;}
 #sf-close{background:#eee;color:#444;}
-#pnl{display:none;position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:2px solid #e0d8cc;padding:14px 16px;z-index:100;box-shadow:0 -4px 20px rgba(0,0,0,.15);max-height:75vh;overflow-y:auto;}
-#pnl h3{font-size:11px;text-transform:uppercase;color:#888;margin-bottom:10px;}
-.pr{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;font-size:13px;}
-.pr label{color:#555;}
-.pr input,.pr select{width:130px;padding:6px 8px;border:1.5px solid #ccc;border-radius:6px;font-size:13px;}
-.pbts{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;}
-.pbts button{flex:1;min-width:70px;padding:10px;font-size:13px;border:1.5px solid #ccc;border-radius:8px;background:#fff;cursor:pointer;}
+#pnl{display:none;position:fixed;bottom:60px;left:16px;background:#fff;border:2px solid #e0d8cc;border-radius:12px;padding:12px 14px;z-index:200;box-shadow:0 4px 24px rgba(0,0,0,.18);width:300px;max-height:80vh;overflow-y:auto;cursor:default;}
+#pnl-drag{cursor:move;background:#f0ece6;margin:-12px -14px 10px;padding:8px 14px;border-radius:10px 10px 0 0;display:flex;align-items:center;justify-content:space-between;user-select:none;}
+#pnl-drag span{font-size:11px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.5px;}
+#pnl h3{display:none;}
+.pr{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;font-size:12px;}
+.pr label{color:#555;font-size:12px;}
+.pr input,.pr select{width:110px;padding:5px 7px;border:1.5px solid #ccc;border-radius:6px;font-size:12px;}
+.pbts{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;}
+.pbts button{flex:1;min-width:60px;padding:8px;font-size:12px;border:1.5px solid #ccc;border-radius:8px;background:#fff;cursor:pointer;}
 .pbts .ok{background:#2a5c3f;color:#fff;border-color:#2a5c3f;}
 .pbts .dl{border-color:#c0392b;color:#c0392b;}
+#modal-proj{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;align-items:center;justify-content:center;}
+#modal-proj.open{display:flex;}
+#modal-inner{background:#fff;border-radius:14px;padding:20px;width:320px;max-width:90vw;box-shadow:0 8px 32px rgba(0,0,0,.25);}
+#modal-inner h2{font-size:15px;font-weight:700;color:#2a5c3f;margin-bottom:14px;}
+.proj-item{display:flex;align-items:center;justify-content:space-between;padding:9px 12px;border:1.5px solid #e0d8cc;border-radius:8px;margin-bottom:6px;cursor:pointer;font-size:13px;transition:background .15s;}
+.proj-item:hover{background:#f0ece6;}
+.proj-item.active-proj{border-color:#2a5c3f;background:#e8f5ec;font-weight:700;}
+.proj-btns{display:flex;gap:8px;margin-top:14px;}
+.proj-btns button{flex:1;padding:9px;border-radius:8px;border:none;font-size:13px;cursor:pointer;font-weight:600;}
+#modal-new-name{width:100%;padding:8px;border:1.5px solid #ccc;border-radius:8px;font-size:13px;margin-top:10px;box-sizing:border-box;}
 </style>
 </head>
 <body>
@@ -76,9 +88,26 @@ canvas{display:block;touch-action:none;}
     <button id="btn-cotas" style="background:#2a5c3f;color:#fff;border-color:#2a5c3f;flex-shrink:0;padding:8px 12px;border:1.5px solid;border-radius:8px;font-size:12px;cursor:pointer;">📐 Cotas</button>
     <button id="btn-save" style="background:#1a6a9a;color:#fff;border-color:#1a6a9a;flex-shrink:0;padding:8px 12px;border:1.5px solid;border-radius:8px;font-size:12px;cursor:pointer;">💾 Local</button>
     <button id="btn-load" style="background:#6a3a9a;color:#fff;border-color:#6a3a9a;flex-shrink:0;padding:8px 12px;border:1.5px solid;border-radius:8px;font-size:12px;cursor:pointer;">📂 Local</button>
-    <button id="btn-cloud-save" style="background:#e67e22;color:#fff;border-color:#e67e22;flex-shrink:0;padding:8px 12px;border:1.5px solid;border-radius:8px;font-size:12px;cursor:pointer;">☁️ Nuvem</button>
-    <button id="btn-cloud-load" style="background:#c0392b;color:#fff;border-color:#c0392b;flex-shrink:0;padding:8px 12px;border:1.5px solid;border-radius:8px;font-size:12px;cursor:pointer;">⬇️ Nuvem</button>
+    <button id="btn-cloud-save" style="background:#e67e22;color:#fff;border-color:#e67e22;flex-shrink:0;padding:8px 12px;border:1.5px solid;border-radius:8px;font-size:12px;cursor:pointer;">☁️ Salvar</button>
+    <button id="btn-cloud-load" style="background:#c0392b;color:#fff;border-color:#c0392b;flex-shrink:0;padding:8px 12px;border:1.5px solid;border-radius:8px;font-size:12px;cursor:pointer;">⬇️ Carregar</button>
+    <button id="btn-projects" style="background:#2a3a6a;color:#fff;border-color:#2a3a6a;flex-shrink:0;padding:8px 12px;border:1.5px solid;border-radius:8px;font-size:12px;cursor:pointer;">📁 Projetos</button>
     <button id="btn-clr" class="red">✕ Limpar</button>
+  </div>
+</header>
+
+<!-- Modal de projetos -->
+<div id="modal-proj">
+  <div id="modal-inner">
+    <h2>📁 Meus Projetos</h2>
+    <div id="proj-list">Carregando...</div>
+    <input type="text" id="modal-new-name" placeholder="Nome do novo projeto..." />
+    <div class="proj-btns">
+      <button onclick="createProject()" style="background:#2a5c3f;color:#fff;">+ Novo</button>
+      <button onclick="deleteCurrentProject()" style="background:#c0392b;color:#fff;">🗑 Deletar</button>
+      <button onclick="closeModal()" style="background:#eee;color:#444;">✕ Fechar</button>
+    </div>
+  </div>
+</div>
   </div>
 </header>
 
@@ -95,12 +124,12 @@ canvas{display:block;touch-action:none;}
 </div>
 
 <div id="pnl">
-  <h3>Editar elemento</h3>
+  <div id="pnl-drag"><span>✏️ Editar elemento</span><button onclick="closePnl2()" style="border:none;background:none;font-size:16px;cursor:pointer;color:#888;">✕</button></div>
   <div class="pr"><label>Rótulo</label><input type="text" id="pl" placeholder="ex: Sala"/></div>
   <div class="pr"><label>Largura (m)</label><input type="number" id="pw" step="0.05" min="0.1"/></div>
   <div class="pr"><label>Altura (m)</label><input type="number" id="ph" step="0.05" min="0.1"/></div>
   <div class="pr"><label>Rotação (°)</label><input type="number" id="prot" value="0" min="0" max="359" step="1"/></div>
-  <div class="pr" id="pr-color"><label>Cor de fundo</label><input type="color" id="pcolor" value="#dff0e8" style="width:60px;height:32px;border-radius:6px;border:1px solid #ccc;cursor:pointer;"/></div>
+  <div class="pr" id="pr-color"><label>Cor de fundo</label><input type="color" id="pcolor" value="#dff0e8" style="width:60px;height:28px;border-radius:6px;border:1px solid #ccc;cursor:pointer;"/></div>
   <div class="pr" id="pr-alpha"><label>Transparência</label>
     <select id="palpha">
       <option value="1">Sólido</option>
@@ -110,10 +139,10 @@ canvas{display:block;touch-action:none;}
     </select>
   </div>
   <div class="pr" id="pr-text" style="display:none"><label>Texto</label><input type="text" id="ptext"/></div>
-  <div class="pr" id="pr-fontsize" style="display:none"><label>Tamanho fonte</label><input type="number" id="pfontsize" value="14" min="8" max="72"/></div>
+  <div class="pr" id="pr-fontsize" style="display:none"><label>Fonte (px)</label><input type="number" id="pfontsize" value="14" min="8" max="72"/></div>
   <div class="pbts">
     <button class="ok" id="btn-ok">✓ Aplicar</button>
-    <button id="btn-copy2" style="background:#5b9bd5;color:#fff;border-color:#5b9bd5;">⧉ Copiar</button>
+    <button id="btn-copy2" style="background:#5b9bd5;color:#fff;border-color:#5b9bd5;">⧉</button>
     <button class="dl" id="btn-pdl">🗑</button>
     <button id="btn-pc">✕</button>
   </div>
@@ -268,8 +297,39 @@ var TREE_IMGS = {
   document.getElementById('btn-save').onclick = saveProject;
   document.getElementById('btn-load').onclick = loadProject;
 
-  // ---- FIREBASE CLOUD SAVE/LOAD ----
-  // Configure aqui com seu projeto Firebase
+  // ---- DRAG DO PAINEL DE EDIÇÃO ----
+  (function(){
+    var el = document.getElementById('pnl');
+    var drag = document.getElementById('pnl-drag');
+    var ox=0,oy=0,dragging=false;
+    drag.addEventListener('mousedown',function(e){
+      dragging=true; ox=e.clientX-el.offsetLeft; oy=e.clientY-el.offsetTop;
+      e.preventDefault();
+    });
+    drag.addEventListener('touchstart',function(e){
+      dragging=true;
+      ox=e.touches[0].clientX-el.offsetLeft;
+      oy=e.touches[0].clientY-el.offsetTop;
+    },{passive:true});
+    document.addEventListener('mousemove',function(e){
+      if(!dragging)return;
+      el.style.left=Math.max(0,e.clientX-ox)+'px';
+      el.style.top=Math.max(0,e.clientY-oy)+'px';
+      el.style.bottom='auto';
+    });
+    document.addEventListener('touchmove',function(e){
+      if(!dragging)return;
+      el.style.left=Math.max(0,e.touches[0].clientX-ox)+'px';
+      el.style.top=Math.max(0,e.touches[0].clientY-oy)+'px';
+      el.style.bottom='auto';
+    },{passive:true});
+    document.addEventListener('mouseup',function(){dragging=false;});
+    document.addEventListener('touchend',function(){dragging=false;});
+  })();
+
+  function closePnl2(){ closePnl(); }
+
+  // ---- FIREBASE ----
   var FB_CONFIG = {
     apiKey: "AIzaSyBQt019DWWb-a83b_o-vsonuXJ9m6z1MGw",
     authDomain: "plantafacil-ernandes.firebaseapp.com",
@@ -279,79 +339,119 @@ var TREE_IMGS = {
     appId: "1:387009506672:web:88c6569305d709b502f3b5"
   };
   var FB_COLLECTION = 'plantafacil_projetos';
-  var FB_DOC = 'ernandes_main'; // nome do documento padrão
-
-  var fbApp = null, fbDb = null;
+  var currentProject = localStorage.getItem('pf_current_proj') || 'Minha Casa';
+  var fbDb = null;
 
   function initFirebase(){
     if(fbDb) return true;
     try {
-      if(!FB_CONFIG.apiKey || FB_CONFIG.apiKey === 'COLE_SUA_API_KEY'){
-        showToast('Configure o Firebase no código (apiKey).', '#c0392b');
-        return false;
-      }
-      if(!firebase.apps.length){
-        fbApp = firebase.initializeApp(FB_CONFIG);
-      } else {
-        fbApp = firebase.app();
-      }
+      if(!firebase.apps.length) firebase.initializeApp(FB_CONFIG);
       fbDb = firebase.firestore();
       return true;
-    } catch(e) {
-      showToast('Erro Firebase: '+e.message, '#c0392b');
-      return false;
-    }
+    } catch(e){ showToast('Erro Firebase: '+e.message,'#c0392b'); return false; }
   }
 
+  // ---- CLOUD SAVE ----
   function cloudSave(){
     if(!initFirebase()) return;
-    showToast('Salvando na nuvem...', '#e67e22');
-    var payload = {
-      els: els,
-      SC: SC,
-      ts: Date.now(),
-      updatedAt: new Date().toISOString()
-    };
-    fbDb.collection(FB_COLLECTION).doc(FB_DOC).set(payload)
-      .then(function(){
-        showToast('☁️ Salvo na nuvem!', '#2a5c3f');
-      })
-      .catch(function(e){
-        showToast('Erro ao salvar: '+e.message, '#c0392b');
-      });
+    var payload = { els:els, SC:SC, ts:Date.now(), name:currentProject, updatedAt:new Date().toISOString() };
+    showToast('Salvando "'+currentProject+'"...','#e67e22');
+    fbDb.collection(FB_COLLECTION).doc(currentProject).set(payload)
+      .then(function(){ showToast('☁️ "'+currentProject+'" salvo!','#2a5c3f'); })
+      .catch(function(e){ showToast('Erro: '+e.message,'#c0392b'); });
   }
 
+  // ---- CLOUD LOAD ----
   function cloudLoad(){
     if(!initFirebase()) return;
-    showToast('Buscando da nuvem...', '#6a3a9a');
-    fbDb.collection(FB_COLLECTION).doc(FB_DOC).get()
+    showToast('Carregando "'+currentProject+'"...','#6a3a9a');
+    fbDb.collection(FB_COLLECTION).doc(currentProject).get()
       .then(function(doc){
-        if(!doc.exists){
-          showToast('Nenhum projeto na nuvem.', '#b85c00');
+        if(!doc.exists){ showToast('Projeto "'+currentProject+'" não encontrado na nuvem.','#b85c00'); return; }
+        var data=doc.data();
+        if(data.els&&data.els.length>0){
+          els=data.els; if(data.SC) SC=data.SC;
+          selId=null; closeSF(); closePnl();
+          var mx=0; for(var i=0;i<els.length;i++) if(els[i].id>mx) mx=els[i].id; nid=mx+1;
+          draw(); updCnt();
+          showToast('⬇️ "'+currentProject+'" carregado!','#2a5c3f');
+        } else { showToast('Projeto vazio.','#b85c00'); }
+      })
+      .catch(function(e){ showToast('Erro: '+e.message,'#c0392b'); });
+  }
+
+  // ---- GERENCIAR PROJETOS ----
+  function openModal(){
+    if(!initFirebase()) return;
+    document.getElementById('modal-proj').classList.add('open');
+    refreshProjList();
+  }
+  function closeModal(){
+    document.getElementById('modal-proj').classList.remove('open');
+  }
+  document.getElementById('modal-proj').addEventListener('click',function(e){
+    if(e.target===this) closeModal();
+  });
+
+  function refreshProjList(){
+    var list=document.getElementById('proj-list');
+    list.innerHTML='<div style="color:#888;font-size:12px;">Buscando projetos...</div>';
+    fbDb.collection(FB_COLLECTION).orderBy('ts','desc').get()
+      .then(function(snap){
+        if(snap.empty){
+          list.innerHTML='<div style="color:#aaa;font-size:12px;">Nenhum projeto salvo ainda.</div>';
           return;
         }
-        var data = doc.data();
-        if(data.els && data.els.length > 0){
-          els = data.els;
-          if(data.SC) SC = data.SC;
-          selId = null; closeSF(); closePnl();
-          var maxId = 0;
-          for(var i=0;i<els.length;i++) if(els[i].id > maxId) maxId = els[i].id;
-          nid = maxId + 1;
-          draw(); updCnt();
-          var d = new Date(data.ts);
-          showToast('⬇️ Carregado da nuvem! ('+d.toLocaleString('pt-BR')+')', '#2a5c3f');
-        } else {
-          showToast('Projeto na nuvem está vazio.', '#b85c00');
-        }
+        list.innerHTML='';
+        snap.forEach(function(doc){
+          var d=doc.data();
+          var ts=d.ts?new Date(d.ts).toLocaleDateString('pt-BR','dd/MM HH:mm'):'—';
+          var div=document.createElement('div');
+          div.className='proj-item'+(doc.id===currentProject?' active-proj':'');
+          div.innerHTML='<span>'+doc.id+'</span><small style="color:#888;font-size:10px;">'+new Date(d.ts||0).toLocaleString('pt-BR')+'</small>';
+          div.addEventListener('click',function(){
+            currentProject=doc.id;
+            localStorage.setItem('pf_current_proj',currentProject);
+            showToast('Projeto selecionado: "'+currentProject+'"','#2a5c3f');
+            closeModal();
+            cloudLoad();
+          });
+          list.appendChild(div);
+        });
       })
-      .catch(function(e){
-        showToast('Erro ao carregar: '+e.message, '#c0392b');
-      });
+      .catch(function(e){ list.innerHTML='<div style="color:#c0392b;">Erro: '+e.message+'</div>'; });
+  }
+
+  function createProject(){
+    var name=document.getElementById('modal-new-name').value.trim();
+    if(!name){ showToast('Digite um nome para o projeto.','#b85c00'); return; }
+    currentProject=name;
+    localStorage.setItem('pf_current_proj',currentProject);
+    els=[]; selId=null; draw(); updCnt();
+    cloudSave();
+    closeModal();
+    showToast('Novo projeto "'+name+'" criado!','#2a5c3f');
+  }
+
+  function deleteCurrentProject(){
+    if(!confirm('Deletar o projeto "'+currentProject+'"? Isso não pode ser desfeito.')) return;
+    fbDb.collection(FB_COLLECTION).doc(currentProject).delete()
+      .then(function(){
+        showToast('Projeto "'+currentProject+'" deletado.','#c0392b');
+        currentProject='Minha Casa';
+        localStorage.setItem('pf_current_proj',currentProject);
+        els=[]; selId=null; draw(); updCnt();
+        closeModal();
+      })
+      .catch(function(e){ showToast('Erro: '+e.message,'#c0392b'); });
   }
 
   document.getElementById('btn-cloud-save').onclick = cloudSave;
   document.getElementById('btn-cloud-load').onclick = cloudLoad;
+  document.getElementById('btn-projects').onclick = openModal;
+
+  // Auto-save local a cada 30s
+  setInterval(function(){ if(els.length>0) saveProject(); }, 30000);
   document.getElementById('btn-png').onclick=exportPNG;
   document.getElementById('btn-ok').onclick=applyPnl;
   document.getElementById('btn-pdl').onclick=function(){delSel();closePnl();};
